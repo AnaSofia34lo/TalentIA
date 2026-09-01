@@ -18,18 +18,273 @@ enum AuthProvider {
   supabase
 }
 
+enum OrganizationStatus {
+  active
+  inactive
+  suspended
+}
+
+enum VacancyStatus {
+  draft
+  published
+  paused
+  closed
+}
+
+enum ApplicationStatus {
+  pending
+  reviewed
+  shortlisted
+  interview_scheduled
+  rejected
+  hired
+}
+
+enum CandidateStatus {
+  active
+  inactive
+  archived
+}
+
+enum InterviewStatus {
+  scheduled
+  in_progress
+  completed
+  canceled
+}
+
+enum InterviewType {
+  live_ai
+  technical
+  behavioral
+  mixed
+}
+
+enum FileKind {
+  cv
+  cover_letter
+  interview_video
+  profile_photo
+}
+
+enum EvaluationType {
+  technical
+  behavioral
+  cultural
+  skills
+}
+
+model Organization {
+  id          String             @id @default(uuid())
+  name        String
+  slug        String             @unique
+  status      OrganizationStatus @default(active)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  users       User[]
+  vacancies   Vacancy[]
+  applications CandidateApplication[]
+
+  @@map("organizations")
+}
+
 model User {
-  id           String       @id @default(uuid())
-  email        String       @unique
-  passwordHash String?
-  fullName     String
-  role         Role         @default(candidate)
-  authProvider AuthProvider @default(local)
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id             String        @id @default(uuid())
+  email          String        @unique
+  passwordHash   String?
+  fullName       String
+  phone          String?
+  role           Role          @default(candidate)
+  authProvider   AuthProvider  @default(local)
+  isActive       Boolean       @default(true)
+  candidateStatus CandidateStatus @default(active)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  candidateProfile CandidateProfile?
+  createdVacancies Vacancy[] @relation("VacancyCreatedBy")
+  applications     CandidateApplication[] @relation("ApplicationCandidate")
+  interviewsAsCandidate Interview[] @relation("InterviewCandidate")
+  interviewsAsInterviewer Interview[] @relation("InterviewInterviewer")
+  evaluations     Evaluation[] @relation("EvaluationReviewer")
+  interviewAnswers InterviewAnswer[]
+  documents       StorageAsset[]
+  auditLogs       AuditLog[]
 
   @@map("users")
+}
+
+model CandidateProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalTitle  String?
+  summary            String?
+  yearsOfExperience  Int?
+  location           String?
+  linkedinUrl        String?
+  portfolioUrl       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("candidate_profiles")
+}
+
+model Vacancy {
+  id                 String        @id @default(uuid())
+  organizationId     String
+  organization       Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUserId    String
+  createdBy          User          @relation("VacancyCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  title              String
+  slug               String        @unique
+  description        String
+  requirements       String?
+  status             VacancyStatus @default(draft)
+  publishedAt        DateTime?
+  deadlineAt         DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  requirementsList VacancyRequirement[]
+  skills           VacancySkill[]
+  applications     CandidateApplication[]
+  interviews       Interview[]
+
+  @@map("vacancies")
+}
+
+model VacancyRequirement {
+  id          String   @id @default(uuid())
+  vacancyId   String
+  vacancy     Vacancy  @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  isMandatory Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@map("vacancy_requirements")
+}
+
+model VacancySkill {
+  id          String   @id @default(uuid())
+  vacancyId   String
+  vacancy     Vacancy  @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  name        String
+  weight      Int      @default(1)
+
+  @@map("vacancy_skills")
+}
+
+model CandidateApplication {
+  id               String            @id @default(uuid())
+  candidateId      String
+  candidate        User              @relation("ApplicationCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+  vacancyId        String
+  vacancy          Vacancy           @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  organizationId   String
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status           ApplicationStatus @default(pending)
+  matchScore       Float?
+  coverLetter      String?
+  submittedAt      DateTime          @default(now())
+  reviewedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  interviews       Interview[]
+  evaluations      Evaluation[]
+
+  @@unique([candidateId, vacancyId])
+  @@map("candidate_applications")
+}
+
+model Interview {
+  id              String            @id @default(uuid())
+  applicationId   String
+  application     CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  vacancyId       String
+  vacancy         Vacancy           @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  candidateId     String
+  candidate       User              @relation("InterviewCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+  interviewerId   String?
+  interviewer     User?             @relation("InterviewInterviewer", fields: [interviewerId], references: [id], onDelete: SetNull)
+  type            InterviewType     @default(live_ai)
+  status          InterviewStatus   @default(scheduled)
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  summary         String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  questions       InterviewQuestion[]
+  answers         InterviewAnswer[]
+  evaluations     Evaluation[]
+
+  @@map("interviews")
+}
+
+model InterviewQuestion {
+  id          String   @id @default(uuid())
+  interviewId String
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  category    String
+  prompt      String
+  expectedAnswer String?
+  createdAt   DateTime @default(now())
+
+  answers     InterviewAnswer[]
+
+  @@map("interview_questions")
+}
+
+model InterviewAnswer {
+  id          String   @id @default(uuid())
+  interviewId String
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    InterviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  responseText String?
+  videoUrl    String?
+  createdAt   DateTime @default(now())
+
+  @@map("interview_answers")
+}
+
+model Evaluation {
+  id          String         @id @default(uuid())
+  applicationId String
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewId String?
+  interview   Interview?     @relation(fields: [interviewId], references: [id], onDelete: SetNull)
+  reviewerId  String?
+  reviewer    User?          @relation("EvaluationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  type        EvaluationType
+  score       Float?
+  summary     String?
+  createdAt   DateTime       @default(now())
+
+  @@map("evaluations")
+}
+
+model StorageAsset {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  bucketName String
+  fileName   String
+  fileUrl    String
+  mimeType   String?
+  kind       FileKind
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+
+  @@map("storage_assets")
 }
 
 model AuditLog {
@@ -38,6 +293,7 @@ model AuditLog {
   entityType String
   entityId   String?
   userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   details    Json?
   createdAt  DateTime @default(now())
 
