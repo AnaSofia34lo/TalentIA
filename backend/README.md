@@ -42,7 +42,6 @@ npx prisma migrate dev --name init
 npm run start:dev
 ```
 
-
 ## Swagger
 
 Disponibile en:
@@ -51,12 +50,23 @@ Disponibile en:
 
 Endpoints documentados:
 
+- `POST /auth/register`: crea un candidato en Supabase Auth y sincroniza `users` en Prisma.
 - `POST /auth/login`: recibe `email` y `password` y devuelve el JWT de Supabase.
 - `GET /auth/me`: requiere `Authorization: Bearer <access_token>` y devuelve el usuario autenticado.
 - `GET /`: endpoint público de disponibilidad.
 - `GET /health`: endpoint público de salud.
 
 En Swagger usa **Authorize** con el valor `Bearer <access_token>` después de iniciar sesión.
+
+### HU-01: Registro de candidato
+
+`POST /auth/register` recibe `email`, `password`, `confirmPassword` y, opcionalmente,
+`fullName`. El backend valida el formato del correo, mínimo ocho caracteres, una
+mayúscula, una minúscula, un número, un carácter especial y la coincidencia de
+las contraseñas. Luego crea el usuario en Supabase Auth con `role: candidate` en
+`app_metadata` y crea el registro local con el mismo UUID.
+
+Si el correo ya existe responde `409` con `Este correo ya está registrado`.
 
 Ejemplo de login:
 

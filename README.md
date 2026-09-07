@@ -14,6 +14,14 @@ TalentIA es una plataforma para gestión de contratación con foco en automatiza
 - Seguridad: JWT de Supabase
 - Documentación: Swagger
 
+## HU-01 implementada
+
+El registro de candidatos está implementado en backend y frontend. Usa Supabase
+Auth para crear la cuenta y emitir la sesión JWT, Prisma para sincronizar el
+usuario local y Swagger para probar `POST /auth/register`. El frontend valida en
+vivo correo, contraseña y confirmación, y redirige a `/candidato/cv` después del
+registro exitoso.
+
 ## Requisitos funcionales y de negocio
 
 Se conservan las historias de usuario del proyecto, incluyendo perfiles de administrador, candidato y organización del flujo de reclutamiento, sin implementar todavía la funcionalidad completa del negocio.

@@ -1,6 +1,6 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { AuthService } from './auth.service.js';
 
@@ -12,6 +12,28 @@ class LoginDto {
   @IsString()
   @MinLength(8)
   password: string;
+}
+
+class RegisterDto {
+  @IsEmail({}, { message: 'Ingresa un correo válido con texto antes del @ y un dominio válido.' })
+  @IsNotEmpty({ message: 'Campo obligatorio' })
+  email: string;
+
+  @IsString()
+  @MinLength(8, { message: 'La contraseña debe tener mínimo 8 caracteres.' })
+  @Matches(/[A-Z]/, { message: 'La contraseña debe contener una letra mayúscula.' })
+  @Matches(/[a-z]/, { message: 'La contraseña debe contener una letra minúscula.' })
+  @Matches(/[0-9]/, { message: 'La contraseña debe contener números.' })
+  @Matches(/[!@#$%^&*.,-]/, { message: 'La contraseña debe contener un carácter especial.' })
+  password: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Campo obligatorio' })
+  confirmPassword: string;
+
+  @IsOptional()
+  @IsString()
+  fullName?: string;
 }
 
 @ApiTags('Autenticación')
@@ -63,6 +85,36 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'El correo o la contraseña no cumplen las validaciones requeridas' })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Post('register')
+  @Public()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Registra un candidato',
+    description: 'Crea el usuario en Supabase Auth, sincroniza su registro en Prisma y devuelve un JWT de sesión.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'password', 'confirmPassword'],
+      properties: {
+        email: { type: 'string', example: 'candidato@talentia.co' },
+        password: { type: 'string', example: 'Talento123!' },
+        confirmPassword: { type: 'string', example: 'Talento123!' },
+        fullName: { type: 'string', example: 'Camila Restrepo' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Cuenta creada y sesión iniciada' })
+  @ApiResponse({ status: 400, description: 'Campos obligatorios, correo o contraseña inválidos; o contraseñas diferentes' })
+  @ApiResponse({ status: 409, description: 'Este correo ya está registrado' })
+  async register(@Body() dto: RegisterDto) {
+    if (dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Las contraseñas deben ser iguales.');
+    }
+
+    return this.authService.register(dto.email, dto.password, dto.fullName);
   }
 
   @Get('me')

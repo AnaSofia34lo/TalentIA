@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-inter: Arial, sans-serif;
+  --font-poppins: Arial, sans-serif;
   --navy: #123C73;
   --navy-dark: #0C2C55;
   --navy-mid: #2A5091;
