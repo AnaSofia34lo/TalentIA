@@ -4,13 +4,14 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 @Injectable()
 export class SupabaseService {
   private readonly client: SupabaseClient;
+  private readonly authClient: SupabaseClient;
 
   constructor() {
-    const url = process.env.SUPABASE_URL ?? 'https://example.supabase.co';
-    const key =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'service-role-placeholder';
+    const url = process.env.SUPABASE_URL ?? 'https://invalid.supabase.co';
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'missing-service-role-key';
+    const anonKey = process.env.SUPABASE_ANON_KEY ?? 'missing-anon-key';
 
-    this.client = createClient(url, key, {
+    this.client = createClient(url, serviceRoleKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -22,10 +23,36 @@ export class SupabaseService {
         },
       },
     });
+
+    this.authClient = createClient(url, anonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
   }
 
   getClient(): SupabaseClient {
+    this.assertConfiguration();
     return this.client;
+  }
+
+  getAuthClient(): SupabaseClient {
+    this.assertConfiguration();
+    return this.authClient;
+  }
+
+  private assertConfiguration(): void {
+    if (
+      !process.env.SUPABASE_URL ||
+      !process.env.SUPABASE_ANON_KEY ||
+      !process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      throw new Error(
+        'Configura SUPABASE_URL, SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY antes de usar autenticación.',
+      );
+    }
   }
 
   getBucketName(type: 'cv' | 'video'): string {

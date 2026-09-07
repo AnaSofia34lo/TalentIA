@@ -11,7 +11,7 @@ TalentIA es una plataforma para gestión de contratación con foco en automatiza
 - Base de datos: PostgreSQL en Supabase
 - Storage: S3 compatible de Supabase
 - ORM: Prisma
-- Seguridad: JWT, RBAC, Helmet, validación y throttling
+- Seguridad: JWT de Supabase
 - Documentación: Swagger
 
 ## Requisitos funcionales y de negocio

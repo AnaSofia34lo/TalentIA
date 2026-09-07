@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -12,13 +11,6 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
-    JwtModule.register({
-      global: true,
-      secret: process.env.JWT_SECRET ?? 'development-secret',
-      signOptions: {
-        expiresIn: (process.env.JWT_EXPIRES_IN as any) ?? '1h',
-      },
-    }),
     ObserveModule.forRoot({
       appKey: process.env.OBSERVE_APP_KEY ?? 'demo-key',
       appSecret: process.env.OBSERVE_APP_SECRET ?? 'demo-secret',

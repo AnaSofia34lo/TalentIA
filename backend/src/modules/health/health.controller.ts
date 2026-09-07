@@ -1,10 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Public } from '../../common/decorators/public.decorator.js';
 
 @ApiTags('Sistema')
 @Controller('health')
 export class HealthController {
   @Get()
+  @Public()
   @ApiOperation({
     summary: 'Verifica que la API esté disponible',
     description: 'Endpoint de salud para validar que el backend está corriendo correctamente.',

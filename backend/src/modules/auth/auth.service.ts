@@ -1,37 +1,29 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { SupabaseService } from '../../infrastructure/supabase/supabase.service.js';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly supabase: SupabaseService) {}
 
-  async validateUser(email: string, password: string) {
-    const passwordHash = await bcrypt.hash(password, 10);
-    const isValid = await bcrypt.compare(password, passwordHash);
+  async login(email: string, password: string) {
+    const { data, error } = await this.supabase
+      .getAuthClient()
+      .auth.signInWithPassword({ email, password });
 
-    if (!email || !isValid) {
+    if (error || !data.session || !data.user) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
     return {
-      id: 'demo-user-id',
-      email,
-      role: 'admin',
-    };
-  }
-
-  async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
-
-    return {
-      access_token: await this.jwtService.signAsync(payload),
-      user,
+      access_token: data.session.access_token,
+      token_type: 'Bearer',
+      expires_in: data.session.expires_in,
+      expires_at: data.session.expires_at,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        role: data.user.app_metadata?.role ?? 'candidate',
+      },
     };
   }
 }
