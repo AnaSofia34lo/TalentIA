@@ -2,20 +2,24 @@ import { Module } from '@nestjs/common';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import { UsersModule } from './modules/users/users.module.js';
+import { DatabaseModule } from './infrastructure/database/database.module.js';
+import { SupabaseModule } from './infrastructure/supabase/supabase.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
+import { HealthModule } from './modules/health/health.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
-    // Distributed tracing, auto-correlated logs, request/job metrics, error
-    // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
     ObserveModule.forRoot({
-      appKey: 'YOUR_APP_KEY',
-      appSecret: 'YOUR_APP_SECRET',
+      appKey: process.env.OBSERVE_APP_KEY ?? 'demo-key',
+      appSecret: process.env.OBSERVE_APP_SECRET ?? 'demo-secret',
       serviceId: 'backend',
     }),
-    UsersModule,
+    DatabaseModule,
+    SupabaseModule,
+    AuthModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
