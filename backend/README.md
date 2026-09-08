@@ -51,7 +51,7 @@ Disponibile en:
 Endpoints documentados:
 
 - `POST /auth/register`: crea un candidato en Supabase Auth y sincroniza `users` en Prisma.
-- `POST /auth/login`: recibe `email` y `password` y devuelve el JWT de Supabase.
+- `POST /auth/login`: verifica la existencia de la cuenta, valida la contraseña y devuelve el JWT de Supabase.
 - `GET /auth/me`: requiere `Authorization: Bearer <access_token>` y devuelve el usuario autenticado.
 - `GET /`: endpoint público de disponibilidad.
 - `GET /health`: endpoint público de salud.
@@ -67,6 +67,30 @@ las contraseñas. Luego crea el usuario en Supabase Auth con `role: candidate` e
 `app_metadata` y crea el registro local con el mismo UUID.
 
 Si el correo ya existe responde `409` con `Este correo ya está registrado`.
+
+### HU-02: Inicio de sesión
+
+`POST /auth/login` recibe `email` y `password`. Ambos campos son obligatorios;
+el correo debe tener texto antes del `@`, el símbolo `@` y un dominio válido.
+La contraseña se valida con los mismos requisitos definidos en HU-01. Antes de
+intentar iniciar sesión, el backend verifica la existencia de la cuenta en
+Supabase Auth.
+
+Respuestas documentadas:
+
+- `200`: credenciales correctas; devuelve `access_token`, `refresh_token`, expiración y usuario.
+- `404`: `Este correo no tiene una cuenta en TalentIA`.
+- `401`: `La contraseña no coincide con la contraseña de la cuenta`.
+- `400`: datos obligatorios o formato de correo/contraseña inválidos.
+
+Ejemplo:
+
+```json
+{
+  "email": "candidato@talentia.co",
+  "password": "Talento123!"
+}
+```
 
 Ejemplo de login:
 

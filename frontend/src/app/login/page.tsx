@@ -41,6 +41,7 @@ export default function LoginPage() {
   const passwordsMatch = password.length > 0 && password === confirmPassword;
 
   const selectRole = (role: UserRole) => {
+    if (role === selectedRole) return;
     setSelectedRole(role);
     setRegisterMode(role === 'candidate');
     setError('');
@@ -109,11 +110,12 @@ export default function LoginPage() {
               <div className="input-icon-wrap"><span className="icon"><LockIcon size={18} /></span><input id="password" className="input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Ingresa tu contraseña" /></div>
             </div>
 
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--bg)] p-3">
+              <p className="text-xs font-semibold text-[var(--ink)] mb-2">La contraseña tiene los siguientes requisitos:</p>
+              <div className="grid gap-1">{passwordRules.map((rule) => { const valid = rule.test(password); return <p key={rule.label} className={`text-xs ${valid ? 'text-[var(--green)]' : 'text-[var(--ink-faint)]'}`}><span className="inline-block w-4">{valid ? '✓' : '○'}</span>{rule.label}</p>; })}</div>
+            </div>
+
             {registerMode && <>
-              <div className="rounded-xl border border-[var(--line)] bg-[var(--bg)] p-3">
-                <p className="text-xs font-semibold text-[var(--ink)] mb-2">La contraseña tiene los siguientes requisitos:</p>
-                <div className="grid gap-1">{passwordRules.map((rule) => { const valid = rule.test(password); return <p key={rule.label} className={`text-xs ${valid ? 'text-[var(--green)]' : 'text-[var(--ink-faint)]'}`}><span className="inline-block w-4">{valid ? '✓' : '○'}</span>{rule.label}</p>; })}</div>
-              </div>
               <div className="field">
                 <label htmlFor="confirmPassword">Confirmar contraseña</label>
                 <div className="input-icon-wrap"><span className="icon"><LockIcon size={18} /></span><input id="confirmPassword" className={`input ${confirmPassword && !passwordsMatch ? 'border-[var(--red)]' : ''}`} type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Repite tu contraseña" /></div>
