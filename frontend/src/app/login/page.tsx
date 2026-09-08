@@ -41,6 +41,7 @@ export default function LoginPage() {
   const passwordsMatch = password.length > 0 && password === confirmPassword;
 
   const selectRole = (role: UserRole) => {
+    if (role === selectedRole) return;
     setSelectedRole(role);
     setRegisterMode(role === 'candidate');
     setError('');
