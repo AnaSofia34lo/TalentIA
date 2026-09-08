@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { Public } from '../../common/decorators/public.decorator.js';
@@ -6,11 +6,15 @@ import { AuthService } from './auth.service.js';
 
 class LoginDto {
   @IsEmail()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Campo obligatorio' })
   email: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(8, { message: 'La contraseña debe tener mínimo 8 caracteres.' })
+  @Matches(/[A-Z]/, { message: 'La contraseña debe contener una letra mayúscula.' })
+  @Matches(/[a-z]/, { message: 'La contraseña debe contener una letra minúscula.' })
+  @Matches(/[0-9]/, { message: 'La contraseña debe contener números.' })
+  @Matches(/[!@#$%^&*.,-]/, { message: 'La contraseña debe contener un carácter especial.' })
   password: string;
 }
 
@@ -73,15 +77,28 @@ export class AuthController {
       type: 'object',
       example: {
         access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        refresh_token: 'v1-refresh-token-example',
+        token_type: 'Bearer',
+        expires_in: 3600,
+        expires_at: 1780000000,
         user: {
-          id: 'demo-user-id',
+          id: '2e3d1d5c-6f5f-4d30-a9dd-4e4cfd4b4f87',
           email: 'ana.ramirez@talentia.co',
-          role: 'admin',
+          role: 'candidate',
         },
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
+  @ApiResponse({
+    status: 401,
+    description: 'La contraseña no coincide con la contraseña de la cuenta',
+    schema: { example: { statusCode: 401, message: 'La contraseña no coincide con la contraseña de la cuenta' } },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Este correo no tiene una cuenta en TalentIA',
+    schema: { example: { statusCode: 404, message: 'Este correo no tiene una cuenta en TalentIA' } },
+  })
   @ApiResponse({ status: 400, description: 'El correo o la contraseña no cumplen las validaciones requeridas' })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
@@ -106,7 +123,19 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Cuenta creada y sesión iniciada' })
+  @ApiResponse({
+    status: 201,
+    description: 'Cuenta creada y sesión iniciada',
+    schema: {
+      example: {
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        refresh_token: 'v1-refresh-token-example',
+        token_type: 'Bearer',
+        expires_in: 3600,
+        user: { id: '2e3d1d5c-6f5f-4d30-a9dd-4e4cfd4b4f87', email: 'candidato@talentia.co', role: 'candidate' },
+      },
+    },
+  })
   @ApiResponse({ status: 400, description: 'Campos obligatorios, correo o contraseña inválidos; o contraseñas diferentes' })
   @ApiResponse({ status: 409, description: 'Este correo ya está registrado' })
   async register(@Body() dto: RegisterDto) {

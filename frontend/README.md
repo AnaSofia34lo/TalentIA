@@ -33,6 +33,18 @@ a `Mi hoja de vida` (`/candidato/cv`).
 El mensaje para un correo existente es `Este correo ya está registrado` y el
 mensaje para contraseñas diferentes es `Las contraseñas deben ser iguales.`.
 
+## HU-02: Iniciar sesión
+
+El formulario usa `POST /auth/login` del backend y Supabase Authentication para
+validar las credenciales. Antes de enviar, valida en vivo correo, campos
+obligatorios y los requisitos de la contraseña. Las respuestas se muestran al
+usuario con mensajes claros: `Este correo no tiene una cuenta en TalentIA` o
+`La contraseña no coincide con la contraseña de la cuenta`.
+
+Con credenciales correctas se guarda la sesión JWT de Supabase y se redirige al
+panel correspondiente: `/admin/dashboard` para administradores o
+`/candidato/cv` para candidatos.
+
 ## Ejecución
 
 ```bash

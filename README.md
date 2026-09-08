@@ -22,6 +22,10 @@ usuario local y Swagger para probar `POST /auth/register`. El frontend valida en
 vivo correo, contraseña y confirmación, y redirige a `/candidato/cv` después del
 registro exitoso.
 
+El inicio de sesión HU-02 usa el mismo flujo de Supabase Authentication y JWT.
+Swagger documenta `POST /auth/login`, sus parámetros, ejemplos, validaciones y
+respuestas para cuenta inexistente, contraseña incorrecta y acceso exitoso.
+
 ## Requisitos funcionales y de negocio
 
 Se conservan las historias de usuario del proyecto, incluyendo perfiles de administrador, candidato y organización del flujo de reclutamiento, sin implementar todavía la funcionalidad completa del negocio.

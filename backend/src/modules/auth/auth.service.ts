@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service.js';
@@ -62,12 +63,21 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
+    const account = await this.prisma.user.findUnique({ where: { email } });
+    if (!account) {
+      throw new NotFoundException(
+        'Este correo no tiene una cuenta en TalentIA',
+      );
+    }
+
     const { data, error } = await this.supabase
       .getAuthClient()
       .auth.signInWithPassword({ email, password });
 
     if (error || !data.session || !data.user) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException(
+        'La contraseña no coincide con la contraseña de la cuenta',
+      );
     }
 
     return {
