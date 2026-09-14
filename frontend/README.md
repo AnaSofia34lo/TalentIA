@@ -45,16 +45,31 @@ Con credenciales correctas se guarda la sesión JWT de Supabase y se redirige al
 panel correspondiente: `/admin/dashboard` para administradores o
 `/candidato/cv` para candidatos.
 
-## HU-03: Perfil y hoja de vida
+## HU-03: Perfil del candidato
 
 `/candidato/perfil` y `/candidato/cv` requieren una sesión activa de Supabase
 Authentication con JWT y rol `candidate`. El correo se muestra deshabilitado y
 solo lectura. El nombre, teléfono, ciudad y enlaces se guardan mediante
 `PATCH /candidate/profile`; el cargo, empresa, años y resumen mediante
-`PATCH /candidate/cv`. El PDF se carga mediante `POST /candidate/cv/file`.
+`PATCH /candidate/cv`.
 
 El contexto global actualiza el nombre, las iniciales por defecto y el cargo en
 el sidebar, encabezado y demás vistas después de guardar.
+
+## HU-04: Subir hoja de vida
+
+La carga de la hoja de vida es una funcionalidad independiente del perfil. El
+candidato selecciona un archivo PDF desde la interfaz de `/candidato/cv` y el
+frontend lo envía al backend mediante `POST /candidate/cv/file`.
+
+El flujo contempla:
+
+- validación del formato PDF y del tamaño máximo de 5 MB;
+- envío autenticado con la sesión JWT del candidato;
+- almacenamiento en el bucket de hojas de vida de Supabase Storage;
+- asociación del archivo con el perfil del candidato;
+- consulta de la hoja de vida mediante una URL firmada temporal;
+- mensajes de error para selección, carga y validación del archivo.
 
 ## Ejecución
 

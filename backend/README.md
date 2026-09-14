@@ -58,22 +58,6 @@ Endpoints documentados:
 
 En Swagger usa **Authorize** con el valor `Bearer <access_token>` después de iniciar sesión.
 
-### HU-03: Perfil y hoja de vida del candidato
-
-Todos estos endpoints requieren `Authorization: Bearer <access_token>` y el rol
-`candidate`, validado por Supabase Authentication y JWT:
-
-- `GET /candidate/profile`: consulta nombre, correo de solo lectura, teléfono y enlaces.
-- `PATCH /candidate/profile`: actualiza nombre, teléfono, ciudad, LinkedIn y portafolio.
-- `GET /candidate/cv`: consulta cargo, empresa, experiencia, resumen y archivo PDF.
-- `PATCH /candidate/cv`: guarda la información profesional.
-- `POST /candidate/cv/file`: carga un PDF de máximo 5 MB en Supabase Storage S3.
-
-El correo no aparece como campo actualizable en ningún DTO. El nombre se guarda
-en Prisma y en `user_metadata.fullName` de Supabase Auth. El endpoint de Storage
-guarda únicamente la ruta del archivo en Prisma y genera una URL firmada temporal
-para descargarlo.
-
 ### HU-01: Registro de candidato
 
 `POST /auth/register` recibe `email`, `password`, `confirmPassword` y, opcionalmente,
@@ -139,6 +123,38 @@ Ejemplo de llamada protegida:
 GET /auth/me
 Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 ```
+
+### HU-03: Perfil del candidato
+
+Todos estos endpoints requieren `Authorization: Bearer <access_token>` y el rol
+`candidate`, validado por Supabase Authentication y JWT:
+
+- `GET /candidate/profile`: consulta nombre, correo de solo lectura, teléfono y enlaces.
+- `PATCH /candidate/profile`: actualiza nombre, teléfono, ciudad, LinkedIn y portafolio.
+- `GET /candidate/cv`: consulta cargo, empresa, experiencia y resumen profesional.
+- `PATCH /candidate/cv`: guarda la información profesional.
+
+El correo no aparece como campo actualizable en ningún DTO. El nombre se guarda
+en Prisma y en `user_metadata.fullName` de Supabase Auth.
+
+### HU-04: Subir hoja de vida
+
+El candidato autenticado puede adjuntar su hoja de vida en formato PDF para
+utilizarla en sus postulaciones. Esta funcionalidad es independiente de la
+edición del perfil y requiere `Authorization: Bearer <access_token>` con rol
+`candidate`.
+
+Flujo documentado:
+
+1. El backend recibe el archivo mediante `POST /candidate/cv/file`.
+2. Se valida que el archivo sea PDF y no supere 5 MB.
+3. El archivo se guarda en el bucket de hojas de vida de Supabase Storage.
+4. Se asocia la ruta del archivo al candidato en Prisma.
+5. Se genera una URL firmada temporal para su consulta o descarga.
+6. El servicio queda documentado en Swagger con parámetros, ejemplos y respuestas.
+
+El candidato solo puede cargar y consultar su propia hoja de vida. El frontend
+de Next.js proporciona el selector de archivo y envía el PDF al backend.
 
 ## Seguridad
 

@@ -14,22 +14,28 @@ TalentIA es una plataforma para gestión de contratación con foco en automatiza
 - Seguridad: JWT de Supabase
 - Documentación: Swagger
 
-## HU-01 implementada
+## Historias de Usuario HU
 
-El registro de candidatos está implementado en backend y frontend. Usa Supabase
+HU-01: El registro de candidatos está implementado en backend y frontend. Usa Supabase
 Auth para crear la cuenta y emitir la sesión JWT, Prisma para sincronizar el
 usuario local y Swagger para probar `POST /auth/register`. El frontend valida en
 vivo correo, contraseña y confirmación, y redirige a `/candidato/cv` después del
 registro exitoso.
 
-El inicio de sesión HU-02 usa el mismo flujo de Supabase Authentication y JWT.
+HU-02: El inicio de sesión HU-02 usa el mismo flujo de Supabase Authentication y JWT.
 Swagger documenta `POST /auth/login`, sus parámetros, ejemplos, validaciones y
 respuestas para cuenta inexistente, contraseña incorrecta y acceso exitoso.
 
-HU-03 queda implementada con perfil y hoja de vida persistidos mediante Prisma,
-Supabase Authentication/JWT y Supabase Storage. El correo es inmutable, los
-datos personales y profesionales se sincronizan globalmente en el frontend y
-las rutas de candidato están protegidas.
+HU-03: Perfil del candidato. Permite consultar y actualizar los datos personales
+y profesionales del candidato mediante Prisma, Supabase Authentication/JWT y
+rutas protegidas. El correo es inmutable y los cambios se sincronizan
+globalmente en el frontend.
+
+HU-04: Subir hoja de vida. Permite al candidato subir su hoja de vida en formato
+PDF para adjuntarla a su perfil y utilizarla en sus postulaciones. La solución
+usa Supabase Storage, validación de formato y tamaño, acceso exclusivo del
+candidato autenticado, integración entre Next.js y NestJS y documentación del
+servicio en Swagger.
 
 ## Requisitos funcionales y de negocio
 
