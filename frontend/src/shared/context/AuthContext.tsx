@@ -132,25 +132,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
-      const role = data.session?.user.app_metadata?.role as UserRole | undefined;
-      if (role === 'admin' || role === 'candidate') {
-        setSessionRole(role);
-        if (role === 'candidate') void hydrateCandidate();
+      const role = data.session?.user.app_metadata?.role as string | undefined;
+      const normalizedRole = role === 'admin' ? 'recruiter' : role;
+      if (normalizedRole === 'recruiter' || normalizedRole === 'candidate') {
+        setSessionRole(normalizedRole);
+        if (normalizedRole === 'candidate') void hydrateCandidate();
       }
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      const role = session?.user.app_metadata?.role as UserRole | undefined;
-      setSessionRole(role === 'admin' || role === 'candidate' ? role : null);
-      if (role === 'candidate') void hydrateCandidate();
+      const role = session?.user.app_metadata?.role as string | undefined;
+      const normalizedRole = role === 'admin' ? 'recruiter' : role;
+      setSessionRole(normalizedRole === 'recruiter' || normalizedRole === 'candidate' ? normalizedRole : null);
+      if (normalizedRole === 'candidate') void hydrateCandidate();
       if (!session) setCandidateProfile(null);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const role: UserRole = sessionRole ?? (pathname.startsWith('/candidato') ? 'candidate' : 'admin');
-  const user = candidateProfile && role === 'candidate' ? userFromCandidate(candidateProfile) : role === 'admin' ? ADMIN_USER : CANDIDATE_USER;
-  const activeNotifs = role === 'admin' ? adminNotifs : candNotifs;
+  const role: UserRole = sessionRole ?? (pathname.startsWith('/candidato') ? 'candidate' : 'recruiter');
+  const user = candidateProfile && role === 'candidate' ? userFromCandidate(candidateProfile) : role === 'recruiter' ? ADMIN_USER : CANDIDATE_USER;
+  const activeNotifs = role === 'recruiter' ? adminNotifs : candNotifs;
   const unreadCount = activeNotifs.filter((notification) => notification.unread).length;
 
   const applySession = async (auth: AuthResponse) => {
@@ -208,7 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const markAllNotifsRead = () => {
-    if (role === 'admin') setAdminNotifs((previous) => previous.map((notification) => ({ ...notification, unread: false })));
+    if (role === 'recruiter') setAdminNotifs((previous) => previous.map((notification) => ({ ...notification, unread: false })));
     else setCandNotifs((previous) => previous.map((notification) => ({ ...notification, unread: false })));
   };
 

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useAuth } from '../../../shared/context/AuthContext';
-import { CheckIcon } from '../../../shared/components/ui/Icons';
+import React, { useState } from "react";
+import { useAuth } from "../../../shared/context/AuthContext";
+import { CheckIcon } from "../../../shared/components/ui/Icons";
 
 export default function AdminPerfilPage() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export default function AdminPerfilPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Mi perfil</h1>
-          <p className="page-sub">Información de tu cuenta de administrador.</p>
+          <p className="page-sub">Información de tu cuenta de reclutador.</p>
         </div>
       </div>
 
@@ -45,12 +45,19 @@ export default function AdminPerfilPage() {
 
           <div className="field">
             <label>Teléfono</label>
-            <input className="input" defaultValue={user.phone || '+57 310 987 6543'} />
+            <input
+              className="input"
+              defaultValue={user.phone || "+57 310 987 6543"}
+            />
           </div>
 
           <div className="field">
             <label>Rol</label>
-            <input className="input" defaultValue="Administradora de Selección" disabled />
+            <input
+              className="input"
+              defaultValue="Reclutador de Selección"
+              disabled
+            />
           </div>
 
           <div className="flex items-center gap-3 mt-2">

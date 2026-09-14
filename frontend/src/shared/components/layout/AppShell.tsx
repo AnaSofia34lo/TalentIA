@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* ADMIN NAV */}
-        {role === 'admin' ? (
+        {role === 'recruiter' ? (
           <nav id="nav-admin">
             <div className="nav-group-label">General</div>
             <Link
@@ -204,7 +204,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
 
           <Link
-            href={role === 'admin' ? '/admin/perfil' : '/candidato/perfil'}
+            href={role === 'recruiter' ? '/admin/perfil' : '/candidato/perfil'}
             className="user-chip"
             style={{ marginTop: '6px' }}
           >
@@ -305,7 +305,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <Link
-              href={role === 'admin' ? '/admin/perfil' : '/candidato/perfil'}
+              href={role === 'recruiter' ? '/admin/perfil' : '/candidato/perfil'}
               className="user-chip cursor-pointer"
             >
               <div className="avatar avatar-sm">{user.avatarInitials}</div>

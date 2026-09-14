@@ -3,7 +3,7 @@ import { Vacante, Candidato, Entrevista, ReporteRec, Notificacion, UserProfile }
 export const ADMIN_USER: UserProfile = {
   name: 'Ana Ramírez',
   email: 'ana.ramirez@talentia.co',
-  roleTitle: 'Admin de Selección · DS4B',
+  roleTitle: 'Recruiter de Selección · DS4B',
   avatarInitials: 'AR',
   phone: '+57 310 987 6543'
 };

@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nes
 import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { AuthService } from './auth.service.js';
+import { RegisterRecruiterDto } from './dto/register-recruiter.dto.js';
 
 class LoginDto {
   @IsEmail()
@@ -146,6 +147,37 @@ export class AuthController {
     return this.authService.register(dto.email, dto.password, dto.fullName);
   }
 
+  @Post('register/recruiter')
+  @Public()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Registra un recruiter y su organización',
+    description: 'Endpoint independiente del registro de candidatos. Crea el usuario con role recruiter en Supabase Auth y users, crea o reutiliza la organización y devuelve un JWT de Supabase.',
+  })
+  @ApiBody({ type: RegisterRecruiterDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Recruiter creado, asociado a una organización y autenticado',
+    schema: {
+      example: {
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        refresh_token: 'v1-refresh-token-example',
+        token_type: 'Bearer',
+        expires_in: 3600,
+        user: { id: '2e3d1d5c-6f5f-4d30-a9dd-4e4cfd4b4f87', email: 'talentia@empresa.co', role: 'recruiter', organizationId: 'a7d6d5b4-0c3b-4f88-9a0f-2e2f7f7c4c11' },
+        organization: { id: 'a7d6d5b4-0c3b-4f88-9a0f-2e2f7f7c4c11', name: 'Innovaciones Andinas S.A.S.', slug: 'innovaciones-andinas-s-a-s' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Campos obligatorios, correo o contraseña inválidos; o contraseñas diferentes' })
+  @ApiResponse({ status: 409, description: 'Este correo ya está registrado' })
+  async registerRecruiter(@Body() dto: RegisterRecruiterDto) {
+    if (dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Las contraseñas deben ser iguales.');
+    }
+    return this.authService.registerRecruiter(dto.email, dto.password, dto.fullName);
+  }
+
   @Get('me')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
@@ -159,7 +191,7 @@ export class AuthController {
       example: {
         id: '2e3d1d5c-6f5f-4d30-a9dd-4e4cfd4b4f87',
         email: 'ana.ramirez@talentia.co',
-        role: 'admin',
+        role: 'recruiter',
       },
     },
   })

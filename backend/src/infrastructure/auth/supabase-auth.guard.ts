@@ -7,12 +7,14 @@ import {
 import { Reflector } from '@nestjs/core';
 import { SupabaseService } from '../supabase/supabase.service.js';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator.js';
+import { PrismaService } from '../database/prisma.service.js';
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -41,11 +43,15 @@ export class SupabaseAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token inválido o expirado.');
     }
 
+    const localUser = await this.prisma.user.findUnique({ where: { id: data.user.id } });
+    const role = localUser?.role
+      ?? (data.user.app_metadata?.role === 'admin' ? 'recruiter' : data.user.app_metadata?.role ?? 'candidate');
+
     request.user = {
       id: data.user.id,
       email: data.user.email,
-      role:
-        data.user.app_metadata?.role ?? 'candidate',
+      role,
+      organizationId: localUser?.organizationId,
     };
     return true;
   }
