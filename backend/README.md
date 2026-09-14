@@ -131,8 +131,6 @@ Todos estos endpoints requieren `Authorization: Bearer <access_token>` y el rol
 
 - `GET /candidate/profile`: consulta nombre, correo de solo lectura, teléfono y enlaces.
 - `PATCH /candidate/profile`: actualiza nombre, teléfono, ciudad, LinkedIn y portafolio.
-- `GET /candidate/cv`: consulta cargo, empresa, experiencia y resumen profesional.
-- `PATCH /candidate/cv`: guarda la información profesional.
 
 El correo no aparece como campo actualizable en ningún DTO. El nombre se guarda
 en Prisma y en `user_metadata.fullName` de Supabase Auth.
@@ -155,6 +153,31 @@ Flujo documentado:
 
 El candidato solo puede cargar y consultar su propia hoja de vida. El frontend
 de Next.js proporciona el selector de archivo y envía el PDF al backend.
+
+### HU-05: Registrar experiencia
+
+El registro de experiencia laboral es independiente del perfil personal y de la
+carga de la hoja de vida. Requiere `Authorization: Bearer <access_token>` y el
+rol `candidate`.
+
+Servicios documentados:
+
+- `GET /candidate/cv`: consulta cargo actual, empresa, años de experiencia y resumen profesional.
+- `PATCH /candidate/cv`: registra o actualiza la experiencia laboral del candidato.
+
+El flujo contempla:
+
+1. Diseñar la estructura de datos para almacenar la experiencia mediante Prisma.
+2. Recibir, consultar y actualizar la experiencia desde NestJS.
+3. Validar los datos obligatorios en backend y frontend.
+4. Persistir cargo actual, empresa, años de experiencia y resumen profesional.
+5. Acceso exclusivo del candidato autenticado y gestión de su perfil.
+6. Documentar los servicios en Swagger.
+
+Criterios de aceptación:
+
+- Registro exitoso: cuando el candidato completa los campos y guarda, el sistema almacena o actualiza su experiencia.
+- Campo obligatorio vacío: si deja vacío `Cargo actual` u otro campo obligatorio, el backend rechaza la solicitud y el frontend muestra `Campo obligatorio` resaltado en rojo.
 
 ## Seguridad
 
