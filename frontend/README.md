@@ -47,14 +47,13 @@ panel correspondiente: `/admin/dashboard` para administradores o
 
 ## HU-03: Perfil del candidato
 
-`/candidato/perfil` y `/candidato/cv` requieren una sesión activa de Supabase
+`/candidato/perfil` requiere una sesión activa de Supabase
 Authentication con JWT y rol `candidate`. El correo se muestra deshabilitado y
 solo lectura. El nombre, teléfono, ciudad y enlaces se guardan mediante
-`PATCH /candidate/profile`; el cargo, empresa, años y resumen mediante
-`PATCH /candidate/cv`.
+`PATCH /candidate/profile`.
 
-El contexto global actualiza el nombre, las iniciales por defecto y el cargo en
-el sidebar, encabezado y demás vistas después de guardar.
+El contexto global actualiza el nombre y las iniciales por defecto en el
+sidebar, encabezado y demás vistas después de guardar.
 
 ## HU-04: Subir hoja de vida
 
@@ -70,6 +69,29 @@ El flujo contempla:
 - asociación del archivo con el perfil del candidato;
 - consulta de la hoja de vida mediante una URL firmada temporal;
 - mensajes de error para selección, carga y validación del archivo.
+
+## HU-05: Registrar experiencia
+
+El registro de experiencia laboral es independiente del perfil personal y de la
+carga de la hoja de vida. Desde `Mi hoja de vida` (`/candidato/cv`), el candidato
+autenticado registra y gestiona:
+
+- cargo actual;
+- empresa;
+- años de experiencia;
+- resumen profesional.
+
+La información se guarda mediante `PATCH /candidate/cv` y se consulta mediante
+`GET /candidate/cv`. El frontend valida los campos antes de enviarlos y el
+backend repite las validaciones para proteger la integridad de los datos.
+
+Criterios de aceptación:
+
+- Registro exitoso: al completar los campos y guardar, la experiencia queda almacenada y actualizada en el perfil del candidato.
+- Campo obligatorio vacío: si `Cargo actual` u otro campo obligatorio está vacío, se muestra `Campo obligatorio` resaltado en rojo y no se envía el formulario.
+
+El formulario se integra con NestJS, acceso exclusivo del candidato autenticado
+y corresponde a una funcionalidad documentada en Swagger.
 
 ## Ejecución
 

@@ -27,15 +27,21 @@ Swagger documenta `POST /auth/login`, sus parámetros, ejemplos, validaciones y
 respuestas para cuenta inexistente, contraseña incorrecta y acceso exitoso.
 
 HU-03: Perfil del candidato. Permite consultar y actualizar los datos personales
-y profesionales del candidato mediante Prisma, Supabase Authentication/JWT y
-rutas protegidas. El correo es inmutable y los cambios se sincronizan
-globalmente en el frontend.
+del candidato mediante Prisma, Supabase Authentication/JWT y rutas protegidas.
+El correo es inmutable y los cambios se sincronizan globalmente en el frontend.
 
 HU-04: Subir hoja de vida. Permite al candidato subir su hoja de vida en formato
 PDF para adjuntarla a su perfil y utilizarla en sus postulaciones. La solución
 usa Supabase Storage, validación de formato y tamaño, acceso exclusivo del
 candidato autenticado, integración entre Next.js y NestJS y documentación del
 servicio en Swagger.
+
+HU-05: Registrar experiencia. Permite al candidato registrar y actualizar su
+experiencia laboral, incluyendo cargo actual, empresa, años de experiencia y
+resumen profesional, para mejorar su compatibilidad con las vacantes y permitir
+una evaluación correcta. Incluye validaciones en frontend y backend, acceso
+exclusivo del candidato autenticado, persistencia mediante Prisma y
+documentación en Swagger.
 
 ## Requisitos funcionales y de negocio
 
