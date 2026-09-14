@@ -121,6 +121,7 @@ model CandidateProfile {
   userId             String   @unique
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   professionalTitle  String?
+  currentCompany     String?
   summary            String?
   yearsOfExperience  Int?
   location           String?

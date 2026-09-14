@@ -58,6 +58,22 @@ Endpoints documentados:
 
 En Swagger usa **Authorize** con el valor `Bearer <access_token>` después de iniciar sesión.
 
+### HU-03: Perfil y hoja de vida del candidato
+
+Todos estos endpoints requieren `Authorization: Bearer <access_token>` y el rol
+`candidate`, validado por Supabase Authentication y JWT:
+
+- `GET /candidate/profile`: consulta nombre, correo de solo lectura, teléfono y enlaces.
+- `PATCH /candidate/profile`: actualiza nombre, teléfono, ciudad, LinkedIn y portafolio.
+- `GET /candidate/cv`: consulta cargo, empresa, experiencia, resumen y archivo PDF.
+- `PATCH /candidate/cv`: guarda la información profesional.
+- `POST /candidate/cv/file`: carga un PDF de máximo 5 MB en Supabase Storage S3.
+
+El correo no aparece como campo actualizable en ningún DTO. El nombre se guarda
+en Prisma y en `user_metadata.fullName` de Supabase Auth. El endpoint de Storage
+guarda únicamente la ruta del archivo en Prisma y genera una URL firmada temporal
+para descargarlo.
+
 ### HU-01: Registro de candidato
 
 `POST /auth/register` recibe `email`, `password`, `confirmPassword` y, opcionalmente,

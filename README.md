@@ -26,6 +26,11 @@ El inicio de sesión HU-02 usa el mismo flujo de Supabase Authentication y JWT.
 Swagger documenta `POST /auth/login`, sus parámetros, ejemplos, validaciones y
 respuestas para cuenta inexistente, contraseña incorrecta y acceso exitoso.
 
+HU-03 queda implementada con perfil y hoja de vida persistidos mediante Prisma,
+Supabase Authentication/JWT y Supabase Storage. El correo es inmutable, los
+datos personales y profesionales se sincronizan globalmente en el frontend y
+las rutas de candidato están protegidas.
+
 ## Requisitos funcionales y de negocio
 
 Se conservan las historias de usuario del proyecto, incluyendo perfiles de administrador, candidato y organización del flujo de reclutamiento, sin implementar todavía la funcionalidad completa del negocio.

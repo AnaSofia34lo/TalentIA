@@ -1,20 +1,23 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
+import React from "react";
+import Link from "next/link";
 import {
   BriefcaseIcon,
   VideoIcon,
   AwardIcon,
-  ArrowRightIcon
-} from '../../../shared/components/ui/Icons';
+  ArrowRightIcon,
+} from "../../../shared/components/ui/Icons";
+import { useAuth } from "../../../shared/context/AuthContext";
 
 export default function CandidatoInicioPage() {
+  const { user } = useAuth();
+
   return (
     <div>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Hola, Camila 👋</h1>
+          <h1 className="page-title">Hola, {user.name.split(' ')[0]}</h1>
           <p className="page-sub">
             Este es el estado de tus procesos de selección.
           </p>
@@ -26,7 +29,7 @@ export default function CandidatoInicioPage() {
         <div className="card kpi-card">
           <div
             className="kpi-icon"
-            style={{ background: 'var(--navy-tint)', color: 'var(--navy)' }}
+            style={{ background: "var(--navy-tint)", color: "var(--navy)" }}
           >
             <BriefcaseIcon size={18} />
           </div>
@@ -37,7 +40,7 @@ export default function CandidatoInicioPage() {
         <div className="card kpi-card">
           <div
             className="kpi-icon"
-            style={{ background: 'var(--purple-tint)', color: 'var(--purple)' }}
+            style={{ background: "var(--purple-tint)", color: "var(--purple)" }}
           >
             <VideoIcon size={18} />
           </div>
@@ -48,7 +51,7 @@ export default function CandidatoInicioPage() {
         <div className="card kpi-card">
           <div
             className="kpi-icon"
-            style={{ background: 'var(--green-tint)', color: 'var(--green)' }}
+            style={{ background: "var(--green-tint)", color: "var(--green)" }}
           >
             <AwardIcon size={18} />
           </div>
@@ -66,10 +69,10 @@ export default function CandidatoInicioPage() {
             <div
               className="kpi-icon shrink-0"
               style={{
-                background: 'var(--purple-tint)',
-                color: 'var(--purple)',
-                width: '36px',
-                height: '36px'
+                background: "var(--purple-tint)",
+                color: "var(--purple)",
+                width: "36px",
+                height: "36px",
               }}
             >
               <VideoIcon size={18} />
@@ -97,10 +100,10 @@ export default function CandidatoInicioPage() {
             <div
               className="kpi-icon shrink-0"
               style={{
-                background: 'var(--green-tint)',
-                color: 'var(--green)',
-                width: '36px',
-                height: '36px'
+                background: "var(--green-tint)",
+                color: "var(--green)",
+                width: "36px",
+                height: "36px",
               }}
             >
               <AwardIcon size={18} />
@@ -114,10 +117,7 @@ export default function CandidatoInicioPage() {
               </div>
             </div>
           </div>
-          <Link
-            href="/candidato/resultados"
-            className="btn btn-outline btn-sm"
-          >
+          <Link href="/candidato/resultados" className="btn btn-outline btn-sm">
             Ver resultado
           </Link>
         </div>
