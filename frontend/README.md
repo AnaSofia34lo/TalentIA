@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Aplicación web frontend para la experiencia de administradores y candidatos en TalentIA.
+Aplicación web frontend para la experiencia de recruiters y candidatos en TalentIA.
 
 ## Stack
 
@@ -42,7 +42,7 @@ usuario con mensajes claros: `Este correo no tiene una cuenta en TalentIA` o
 `La contraseña no coincide con la contraseña de la cuenta`.
 
 Con credenciales correctas se guarda la sesión JWT de Supabase y se redirige al
-panel correspondiente: `/admin/dashboard` para administradores o
+panel correspondiente: `/admin/dashboard` para recruiters o
 `/candidato/cv` para candidatos.
 
 ## HU-03: Perfil del candidato

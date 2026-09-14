@@ -45,7 +45,7 @@ documentación en Swagger.
 
 ## Requisitos funcionales y de negocio
 
-Se conservan las historias de usuario del proyecto, incluyendo perfiles de administrador, candidato y organización del flujo de reclutamiento, sin implementar todavía la funcionalidad completa del negocio.
+Se conservan las historias de usuario del proyecto, incluyendo perfiles de recruiter, candidato y organización del flujo de reclutamiento, sin implementar todavía la funcionalidad completa del negocio.
 
 ## Enlaces de integración
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppShell } from '../../shared/components/layout/AppShell';
+import { RecruiterAuthGuard } from '../../shared/components/auth/RecruiterAuthGuard';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  return <RecruiterAuthGuard><AppShell>{children}</AppShell></RecruiterAuthGuard>;
 }

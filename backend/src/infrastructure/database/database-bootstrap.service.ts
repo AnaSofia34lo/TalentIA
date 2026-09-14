@@ -46,6 +46,12 @@ export class DatabaseBootstrapService implements OnApplicationBootstrap {
         `);
       }
 
+      if (tableNames.has('users')) {
+        await this.prisma.$executeRawUnsafe(`
+          UPDATE users SET role = 'recruiter' WHERE role::text = 'admin';
+        `);
+      }
+
       if (missingTables.length === 0) {
         this.logger.log('✅ Las tablas ya existen en la base de datos.');
         return;

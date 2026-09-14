@@ -51,12 +51,45 @@ Disponibile en:
 Endpoints documentados:
 
 - `POST /auth/register`: crea un candidato en Supabase Auth y sincroniza `users` en Prisma.
+- `POST /auth/register/recruiter`: crea un recruiter en Supabase Auth, sincroniza `users`, crea o reutiliza su `Organization` y devuelve un JWT.
 - `POST /auth/login`: verifica la existencia de la cuenta, valida la contraseña y devuelve el JWT de Supabase.
 - `GET /auth/me`: requiere `Authorization: Bearer <access_token>` y devuelve el usuario autenticado.
 - `GET /`: endpoint público de disponibilidad.
 - `GET /health`: endpoint público de salud.
 
 En Swagger usa **Authorize** con el valor `Bearer <access_token>` después de iniciar sesión.
+
+### Roles y registro de recruiter
+
+El backend utiliza una sola entidad `users`. Los roles válidos de negocio son `candidate`
+para el flujo de candidato y `recruiter` para el flujo que anteriormente se identificaba
+como admin, administrador o empresa.
+
+`POST /auth/register/recruiter` es un endpoint público independiente del registro de
+candidatos. Recibe `email`, `password`, `confirmPassword` y `fullName`. En este flujo,
+`fullName` representa el nombre de la empresa y se guarda en `users.fullName`; además,
+se crea o reutiliza una fila en `organizations` y se guarda su clave foránea en
+`users.organizationId`.
+
+Ejemplo de solicitud:
+
+```json
+{
+  "email": "talentia@empresa.co",
+  "password": "Empresa123!",
+  "confirmPassword": "Empresa123!",
+  "fullName": "Innovaciones Andinas S.A.S."
+}
+```
+
+El endpoint valida correo, campos obligatorios, mínimo de ocho caracteres, mayúscula,
+minúscula, número, carácter especial y coincidencia de contraseñas. Devuelve `409` si
+el correo ya existe. La respuesta contiene `role: recruiter`, `organizationId`, el JWT
+de Supabase y los datos de la organización.
+
+Los usuarios antiguos con `role: admin` se normalizan a `recruiter` mediante la migración
+`20260914000000_normalize_admin_role` y el arranque de la aplicación. También se
+normaliza el `app_metadata.role` de Supabase al iniciar sesión.
 
 ### HU-01: Registro de candidato
 
