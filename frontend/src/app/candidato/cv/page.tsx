@@ -218,7 +218,7 @@ export default function CandidatoCvPage() {
             <FileTextIcon size={24} />
           </div>
           <h3 className="text-sm font-bold mb-1">
-            {cv?.fileName ?? "Aún no has cargado tu CV"}
+            {cv?.fileName ?? "Aún no has cargado tu CV (Hoja de Vida)"}
           </h3>
           <p className="text-[var(--ink-faint)] text-xs mb-4">
             {cv ? `Subido el ${fileDate}` : "Formato PDF · máximo 5 MB"}
