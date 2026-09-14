@@ -4,6 +4,7 @@ import { AppService } from './app.service.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { SupabaseModule } from './infrastructure/supabase/supabase.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { CandidatesModule } from './modules/candidates/candidates.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
@@ -11,6 +12,7 @@ import { HealthModule } from './modules/health/health.module.js';
     DatabaseModule,
     SupabaseModule,
     AuthModule,
+    CandidatesModule,
     HealthModule,
   ],
   controllers: [AppController],

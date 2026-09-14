@@ -39,6 +39,13 @@ export class DatabaseBootstrapService implements OnApplicationBootstrap {
         (table) => !tableNames.has(table),
       );
 
+      if (tableNames.has('candidate_profiles')) {
+        await this.prisma.$executeRawUnsafe(`
+          ALTER TABLE candidate_profiles
+          ADD COLUMN IF NOT EXISTS "currentCompany" TEXT;
+        `);
+      }
+
       if (missingTables.length === 0) {
         this.logger.log('✅ Las tablas ya existen en la base de datos.');
         return;
@@ -82,6 +89,7 @@ export class DatabaseBootstrapService implements OnApplicationBootstrap {
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           "userId" UUID NOT NULL UNIQUE,
           "professionalTitle" TEXT,
+          "currentCompany" TEXT,
           summary TEXT,
           "yearsOfExperience" INTEGER,
           location TEXT,
