@@ -21,6 +21,7 @@ export function Badge({ variant = 'navy', children, withDot = false, className =
 export function EstadoBadge({ estado }: { estado: string }) {
   const map: Record<string, BadgeVariant> = {
     'Activa': 'green',
+    'Borrador': 'navy',
     'Cerrada': 'red',
     'En pausa': 'amber',
     'Entrevista completada': 'green',

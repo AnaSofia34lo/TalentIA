@@ -125,7 +125,15 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    let account = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.trim().toLowerCase();
+    let account = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (!account) {
+      account = await this.prisma.user.findFirst({
+        where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      });
+    }
     if (!account) {
       throw new NotFoundException(
         'Este correo no tiene una cuenta en TalentIA',
@@ -134,7 +142,7 @@ export class AuthService {
 
     const { data, error } = await this.supabase
       .getAuthClient()
-      .auth.signInWithPassword({ email, password });
+      .auth.signInWithPassword({ email: account.email, password });
 
     if (error || !data.session || !data.user) {
       throw new UnauthorizedException(

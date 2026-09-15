@@ -110,6 +110,9 @@ model User {
   evaluations     Evaluation[] @relation("EvaluationReviewer")
   interviewAnswers InterviewAnswer[]
   documents       StorageAsset[]
+  workExperiences WorkExperience[]
+  certifications  Certification[]
+  technicalSkills CandidateTechnicalSkill[]
   auditLogs       AuditLog[]
 
   @@map("users")
@@ -285,6 +288,49 @@ model StorageAsset {
   createdAt  DateTime @default(now())
 
   @@map("storage_assets")
+}
+
+model WorkExperience {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     String
+  role        String
+  startDate   String?
+  endDate     String?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("work_experiences")
+}
+
+model Certification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  issuer    String?
+  date      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("certifications")
+}
+
+model CandidateTechnicalSkill {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                  String
+  estimatedProficiency  Int
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@map("candidate_technical_skills")
 }
 
 model AuditLog {

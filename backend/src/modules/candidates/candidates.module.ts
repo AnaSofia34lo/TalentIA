@@ -5,5 +5,6 @@ import { CandidatesService } from './candidates.service.js';
 @Module({
   controllers: [CandidatesController],
   providers: [CandidatesService],
+  exports: [CandidatesService],
 })
 export class CandidatesModule {}
