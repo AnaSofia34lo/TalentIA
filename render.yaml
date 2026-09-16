@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm install && npx prisma generate && npm run build
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /health
     envVars:
@@ -24,6 +24,10 @@ services:
         value: hojas-de-vida
       - key: SUPABASE_VIDEO_BUCKET
         value: entrevistas-videos
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
 
   - type: web
     name: talentia-web
