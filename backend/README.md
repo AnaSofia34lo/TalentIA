@@ -56,8 +56,15 @@ Endpoints documentados:
 - `GET /auth/me`: requiere `Authorization: Bearer <access_token>` y devuelve el usuario autenticado.
 - `GET /`: endpoint público de disponibilidad.
 - `GET /health`: endpoint público de salud.
+- `GET /candidate/resume/analysis`: experiencia, certificaciones y skills extraídos por IA (HU-06 / HU-07).
+- `POST /vacancies`: crea vacante con nombre y descripción (HU-09 / HU-10, solo `recruiter`).
 
 En Swagger usa **Authorize** con el valor `Bearer <access_token>` después de iniciar sesión.
+
+Variables adicionales para inteligencia de CV:
+
+- `GEMINI_API_KEY`: clave de Google AI Studio / Gemini (obligatoria para el análisis).
+- `GEMINI_MODEL`: modelo a usar (por defecto `gemini-2.5-flash`).
 
 ### Roles y registro de recruiter
 
@@ -211,6 +218,55 @@ Criterios de aceptación:
 
 - Registro exitoso: cuando el candidato completa los campos y guarda, el sistema almacena o actualiza su experiencia.
 - Campo obligatorio vacío: si deja vacío `Cargo actual` u otro campo obligatorio, el backend rechaza la solicitud y el frontend muestra `Campo obligatorio` resaltado en rojo.
+
+### HU-06: Extracción de experiencia laboral con IA
+
+Tras `POST /candidate/cv/file`, el servicio de candidatos emite `candidate.cv.uploaded`.
+El módulo `resume-intelligence` (Clean Architecture) escucha el evento, descarga el
+PDF desde Supabase Storage, extrae texto (`pdf-parse` / `mammoth`), lo envía a Gemini
+y persiste filas en `WorkExperience`.
+
+Con la experiencia más reciente autocompleta el perfil profesional vía
+`CandidatesService.updateCv` (mismo contrato de HU-05): cargo, empresa, años
+estimados y resumen. Si el PDF no es legible o falta `GEMINI_API_KEY`, el fallo
+queda registrado y **no tumba** la subida del CV.
+
+Consulta autenticada (rol `candidate`):
+
+- `GET /candidate/resume/analysis` — incluye `workExperiences` entre otros campos.
+
+### HU-07: Extracción de certificaciones y skills técnicos
+
+En el mismo pipeline de análisis se extraen y persisten:
+
+- `Certification` — nombre obligatorio; emisor y fecha opcionales.
+- `CandidateTechnicalSkill` — nombre obligatorio; `estimatedProficiency` 0–100.
+
+También se exponen en `GET /candidate/resume/analysis` (`certifications`,
+`technicalSkills`). La UI de listado de certificaciones/skills queda pendiente;
+el autocompletado de experiencia (HU-06 → HU-05) sí se refleja en el frontend
+existente de `/candidato/cv`.
+
+### HU-09 / HU-10: Nombre y descripción de vacante
+
+`POST /vacancies` (rol `recruiter`) recibe `name` (mín. 3) y `description`
+(mín. 20). El módulo `vacancies` (Clean Architecture) asocia la vacante al
+usuario creador (`createdByUserId`) y a su `organizationId`. En Prisma el
+nombre se guarda en la columna existente `title` (no se recreó el modelo).
+
+Swagger: tag **Vacantes**. El formulario Next.js en `/admin/vacantes/crear`
+envía solo esos dos campos al publicar.
+
+Login: `POST /auth/login` es compartido para candidate y recruiter; el
+frontend valida que el rol coincida con la pestaña seleccionada.
+
+Al arrancar el backend se asegura una **cuenta demo de reclutador**
+(`DemoRecruiterSeedService`):
+
+- Correo: `ana.ramirez@talentia.co`
+- Contraseña: `Recruiter123!`
+
+(Configurable con `DEMO_RECRUITER_EMAIL` / `DEMO_RECRUITER_PASSWORD` en `.env`.)
 
 ## Seguridad
 
