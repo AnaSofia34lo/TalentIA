@@ -93,6 +93,43 @@ Criterios de aceptación:
 El formulario se integra con NestJS, acceso exclusivo del candidato autenticado
 y corresponde a una funcionalidad documentada en Swagger.
 
+## HU-06, HU-07 y HU-08: Inteligencia del CV y Match IA
+
+Después de cargar el PDF, el backend analiza la hoja de vida con Gemini. El frontend
+recibe el resultado de `GET /candidate/resume/analysis`, que incluye experiencia
+laboral, certificaciones y habilidades técnicas estimadas. La experiencia más reciente
+puede autocompletar los datos de HU-05.
+
+En `/candidato/vacantes`, el candidato consulta las vacantes publicadas y el frontend
+solicita `GET /vacancies/:vacancyId/match`. El resultado muestra el porcentaje de
+compatibilidad y el número de skills evaluadas. La evidencia detallada se entrega por
+la API; una vista dedicada de certificaciones todavía está pendiente.
+
+## HU-09, HU-10, HU-11 y HU-12: Crear una vacante
+
+Desde `/admin/vacantes/crear`, el reclutador autenticado puede registrar:
+
+- nombre o cargo de la vacante;
+- descripción del cargo;
+- salario mensual;
+- competencias técnicas requeridas.
+
+El formulario envía los datos a `POST /vacancies`. La API valida los campos y el
+backend los persiste asociados a la organización del reclutador.
+
+## HU-13: Gestionar el estado de una vacante
+
+Desde `/admin/vacantes`, el reclutador consulta sus vacantes y puede cambiar su estado
+entre `draft`, `published`, `paused` y `closed`. El cambio se envía mediante
+`PATCH /vacancies/:vacancyId`. Los candidatos solo reciben las vacantes publicadas en
+`/candidato/vacantes`.
+
+## Fuera del alcance actual
+
+La interfaz contiene vistas preparadas para ampliar candidatos, entrevistas y reportes,
+pero el flujo completo de postulación, entrevistas y evaluaciones no está cubierto por
+las HU-01 a HU-13 implementadas.
+
 ## Ejecución
 
 ```bash
