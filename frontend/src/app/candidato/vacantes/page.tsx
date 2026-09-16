@@ -3,17 +3,25 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { BriefcaseIcon } from '../../../shared/components/ui/Icons';
+import { MatchRing } from '../../../shared/components/ui/MatchRing';
 
 type VacancyItem = {
   id: string;
   name: string;
   description: string;
+  salary: number;
   status: string;
 };
 
+type MatchItem = {
+  matchPercentage: number;
+  evaluatedSkills: number;
+};
+
 export default function CandidatoVacantesPage() {
-  const { listAvailableVacancies } = useAuth();
+  const { listAvailableVacancies, getVacancyMatch } = useAuth();
   const [vacancies, setVacancies] = useState<VacancyItem[]>([]);
+  const [matches, setMatches] = useState<Record<string, MatchItem>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,7 +32,24 @@ export default function CandidatoVacantesPage() {
         setLoading(true);
         setError('');
         const data = (await listAvailableVacancies()) as VacancyItem[];
-        if (active) setVacancies(Array.isArray(data) ? data : []);
+        if (active) {
+          const available = Array.isArray(data) ? data : [];
+          setVacancies(available);
+          const matchEntries = await Promise.all(
+            available.map(async (vacancy) => {
+              try {
+                return [vacancy.id, await getVacancyMatch(vacancy.id)] as const;
+              } catch {
+                return null;
+              }
+            }),
+          );
+          if (active) {
+            setMatches(
+              Object.fromEntries(matchEntries.filter((entry): entry is readonly [string, MatchItem] => entry !== null)),
+            );
+          }
+        }
       } catch (requestError) {
         if (active) {
           setError(
@@ -89,9 +114,27 @@ export default function CandidatoVacantesPage() {
                 </div>
 
                 <h3 className="text-base font-bold mb-2.5">{vacancy.name}</h3>
+                <p className="text-sm font-semibold text-[var(--green)] mb-2.5">
+                  {new Intl.NumberFormat('es-CO', {
+                    style: 'currency',
+                    currency: 'COP',
+                    maximumFractionDigits: 0,
+                  }).format(vacancy.salary)} mensuales
+                </p>
                 <p className="text-[var(--ink-soft)] text-xs mb-3.5 leading-relaxed">
                   {vacancy.description}
                 </p>
+                {matches[vacancy.id] && (
+                  <div className="flex items-center gap-3 pt-2 border-t border-[var(--line)]">
+                    <MatchRing percentage={matches[vacancy.id].matchPercentage} size={48} />
+                    <div>
+                      <p className="text-sm font-bold">Match IA</p>
+                      <p className="text-xs text-[var(--ink-soft)]">
+                        {matches[vacancy.id].evaluatedSkills} skills verificadas desde tu CV
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

@@ -50,9 +50,11 @@ interface AuthContextType {
   updateCandidateProfile: (data: Record<string, unknown>) => Promise<CandidateProfileResponse>;
   updateCandidateCv: (data: Record<string, unknown>) => Promise<CandidateProfileResponse>;
   uploadCandidateCv: (file: File) => Promise<{ fileName: string; downloadUrl: string | null }>;
-  createVacancy: (data: { name: string; description: string }) => Promise<{ id: string; name: string; description: string }>;
-  listVacancies: () => Promise<Array<{ id: string; name: string; description: string; status: string }>>;
-  listAvailableVacancies: () => Promise<Array<{ id: string; name: string; description: string; status: string }>>;
+  createVacancy: (data: { name: string; description: string; salary: number; technicalSkills?: string[] }) => Promise<{ id: string; name: string; description: string; salary: number }>;
+  updateVacancy: (vacancyId: string, data: { name: string; description: string; salary: number; status: string; technicalSkills?: string[] }) => Promise<{ id: string; name: string; description: string; salary: number; status: string }>;
+  listVacancies: () => Promise<Array<{ id: string; name: string; description: string; salary: number; status: string }>>;
+  listAvailableVacancies: () => Promise<Array<{ id: string; name: string; description: string; salary: number; status: string }>>;
+  getVacancyMatch: (vacancyId: string) => Promise<{ matchPercentage: number; evaluatedSkills: number }>;
   logout: () => Promise<void>;
   markAllNotifsRead: () => void;
   bancoFilter: string;
@@ -207,8 +209,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await applySession(auth);
   };
 
-  const createVacancy = async (data: { name: string; description: string }) => {
+  const createVacancy = async (data: { name: string; description: string; salary: number; technicalSkills?: string[] }) => {
     return requestApi('vacancies', { method: 'POST', body: JSON.stringify(data) });
+  };
+
+  const updateVacancy = async (vacancyId: string, data: { name: string; description: string; salary: number; status: string; technicalSkills?: string[] }) => {
+    return requestApi(`vacancies/${vacancyId}`, { method: 'PATCH', body: JSON.stringify(data) });
   };
 
   const listVacancies = async () => {
@@ -217,6 +223,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const listAvailableVacancies = async () => {
     return requestApi('vacancies/available');
+  };
+
+  const getVacancyMatch = async (vacancyId: string) => {
+    return requestApi(`vacancies/${vacancyId}/match`);
   };
 
   const refreshCandidateProfile = async () => {
@@ -261,7 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else setCandNotifs((previous) => previous.map((notification) => ({ ...notification, unread: false })));
   };
 
-  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, listVacancies, listAvailableVacancies, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, updateVacancy, listVacancies, listAvailableVacancies, getVacancyMatch, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

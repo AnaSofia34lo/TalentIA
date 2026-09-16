@@ -2,6 +2,7 @@ export type VacancyProps = {
   id?: string;
   name: string;
   description: string;
+  salary: number;
   createdByUserId: string;
   organizationId: string;
   slug?: string;
@@ -12,6 +13,7 @@ export class Vacancy {
   readonly id?: string;
   readonly name: string;
   readonly description: string;
+  readonly salary: number;
   readonly createdByUserId: string;
   readonly organizationId: string;
   readonly slug?: string;
@@ -29,10 +31,14 @@ export class Vacancy {
         'La descripción de la vacante debe tener al menos 20 caracteres.',
       );
     }
+    if (!Number.isInteger(props.salary) || props.salary < 0) {
+      throw new Error('El salario debe ser un número entero no negativo.');
+    }
 
     this.id = props.id;
     this.name = name;
     this.description = description;
+    this.salary = props.salary;
     this.createdByUserId = props.createdByUserId;
     this.organizationId = props.organizationId;
     this.slug = props.slug;

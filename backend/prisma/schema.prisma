@@ -144,6 +144,7 @@ model Vacancy {
   title              String
   slug               String        @unique
   description        String
+  salary             Int
   requirements       String?
   status             VacancyStatus @default(draft)
   publishedAt        DateTime?

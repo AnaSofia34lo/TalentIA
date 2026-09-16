@@ -1,18 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeftIcon, LogoSparkIcon, CheckIcon } from '../../../../shared/components/ui/Icons';
 import { useAuth } from '../../../../shared/context/AuthContext';
 
 export default function CrearVacantePage() {
   const router = useRouter();
-  const { createVacancy } = useAuth();
+  const searchParams = useSearchParams();
+  const editingId = searchParams.get('edit');
+  const { createVacancy, updateVacancy, listVacancies } = useAuth();
   const [name, setName] = useState('Desarrollador de Software (Java & Python)');
   const [description, setDescription] = useState(
     'Buscamos una persona con dominio de Java y Python que participe activamente en el levantamiento de requisitos: que sepa entender lo que se le pide, delimitar el alcance real y ejecutarlo. Evaluamos aptitud demostrada, no solo experiencia listada en el CV.',
   );
+  const [salary, setSalary] = useState('6500000');
+  const [status, setStatus] = useState('published');
   const [techSkills, setTechSkills] = useState([
     'Java',
     'Python',
@@ -30,6 +34,25 @@ export default function CrearVacantePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!editingId) return;
+    void (async () => {
+      try {
+        const vacancies = await listVacancies();
+        const vacancy = vacancies.find((item) => item.id === editingId);
+        if (!vacancy) throw new Error('No se encontró la vacante seleccionada.');
+        setName(vacancy.name);
+        setDescription(vacancy.description);
+        setSalary(String(vacancy.salary));
+        setStatus(vacancy.status);
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : 'No fue posible cargar la vacante.');
+      }
+    })();
+    // La carga solo depende del identificador de la vacante en edición.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId]);
 
   const handleAddTech = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && techInput.trim()) {
@@ -71,6 +94,7 @@ export default function CrearVacantePage() {
     setError('');
     const trimmedName = name.trim();
     const trimmedDescription = description.trim();
+    const salaryAmount = Number(salary);
 
     if (trimmedName.length < 3) {
       setError('El nombre de la vacante debe tener al menos 3 caracteres.');
@@ -80,13 +104,23 @@ export default function CrearVacantePage() {
       setError('La descripción debe tener al menos 20 caracteres.');
       return;
     }
+    if (!Number.isInteger(salaryAmount) || salaryAmount < 0) {
+      setError('Ingresa un salario mensual válido en pesos colombianos.');
+      return;
+    }
 
     try {
       setLoading(true);
-      await createVacancy({
+      const data = {
         name: trimmedName,
         description: trimmedDescription,
-      });
+        salary: salaryAmount,
+      };
+      if (editingId) {
+        await updateVacancy(editingId, { ...data, status });
+      } else {
+        await createVacancy({ ...data, technicalSkills: techSkills });
+      }
       router.push('/admin/vacantes');
     } catch (requestError) {
       setError(
@@ -99,11 +133,14 @@ export default function CrearVacantePage() {
     }
   };
 
+  let submitLabel = editingId ? 'Guardar cambios' : 'Publicar vacante';
+  if (loading) submitLabel = 'Guardando…';
+
   return (
     <div>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Nueva vacante</h1>
+          <h1 className="page-title">{editingId ? 'Editar vacante' : 'Nueva vacante'}</h1>
           <p className="page-sub">
             Completa la información y deja que la IA construya la entrevista por ti.
           </p>
@@ -179,6 +216,19 @@ export default function CrearVacantePage() {
               placeholder="Agregar competencia técnica y presionar Enter..."
             />
           </div>
+              <div className="field">
+                <label htmlFor="vacancy-salary">Salario mensual (COP)</label>
+                <input
+                  id="vacancy-salary"
+                  className="input"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  placeholder="Ej. 6500000"
+                  value={salary}
+                  onChange={(event) => setSalary(event.target.value)}
+                />
+              </div>
 
           <div className="card card-pad">
             <h3 className="text-base font-bold mb-4">Competencias blandas</h3>
@@ -304,7 +354,7 @@ export default function CrearVacantePage() {
             disabled={loading}
           >
             <CheckIcon size={16} />
-            {loading ? 'Guardando…' : 'Publicar vacante'}
+            {submitLabel}
           </button>
         </div>
       </div>

@@ -30,7 +30,7 @@ export class TechnicalSkill {
     const proficiency =
       typeof item.estimatedProficiency === 'number'
         ? item.estimatedProficiency
-        : 50;
+        : 60;
     return new TechnicalSkill({
       userId,
       name,
