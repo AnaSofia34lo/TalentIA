@@ -8,11 +8,13 @@ describe('Vacancy entity — HU-09 / HU-10', () => {
       name: 'Desarrollador Backend',
       description:
         'Responsable del diseño e implementación de APIs NestJS y Prisma.',
+      salary: 6500000,
       createdByUserId: 'u1',
       organizationId: 'o1',
     });
     expect(vacancy.name).toBe('Desarrollador Backend');
     expect(vacancy.description.length).toBeGreaterThanOrEqual(20);
+    expect(vacancy.salary).toBe(6500000);
   });
 
   it('rechaza nombre demasiado corto (HU-09)', () => {
@@ -38,6 +40,20 @@ describe('Vacancy entity — HU-09 / HU-10', () => {
           organizationId: 'o1',
         }),
     ).toThrow(/descripción/i);
+  });
+
+  it('rechaza un salario negativo', () => {
+    expect(
+      () =>
+        new Vacancy({
+          name: 'Analista QA',
+          description:
+            'Descripción suficientemente larga para pasar la validación mínima.',
+          salary: -1,
+          createdByUserId: 'u1',
+          organizationId: 'o1',
+        }),
+    ).toThrow(/salario/i);
   });
 });
 

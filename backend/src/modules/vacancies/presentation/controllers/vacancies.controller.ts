@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -10,8 +10,11 @@ import { Roles } from '../../../../common/decorators/roles.decorator.js';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator.js';
 import { CreateVacancyDto } from '../../application/dtos/create-vacancy.dto.js';
 import { CreateVacancyUseCase } from '../../application/use-cases/create-vacancy.use-case.js';
+import { UpdateVacancyDto } from '../../application/dtos/update-vacancy.dto.js';
+import { UpdateVacancyUseCase } from '../../application/use-cases/update-vacancy.use-case.js';
 import { ListRecruiterVacanciesUseCase } from '../../application/use-cases/list-recruiter-vacancies.use-case.js';
 import { ListPublishedVacanciesUseCase } from '../../application/use-cases/list-published-vacancies.use-case.js';
+import { CalculateVacancyMatchUseCase } from '../../application/use-cases/calculate-vacancy-match.use-case.js';
 import type { Vacancy } from '../../domain/entities/vacancy.entity.js';
 
 @ApiTags('Vacantes')
@@ -20,8 +23,10 @@ import type { Vacancy } from '../../domain/entities/vacancy.entity.js';
 export class VacanciesController {
   constructor(
     private readonly createVacancy: CreateVacancyUseCase,
+    private readonly updateVacancy: UpdateVacancyUseCase,
     private readonly listRecruiterVacancies: ListRecruiterVacanciesUseCase,
     private readonly listPublishedVacancies: ListPublishedVacanciesUseCase,
+    private readonly calculateVacancyMatch: CalculateVacancyMatchUseCase,
   ) {}
 
   @Get('available')
@@ -37,6 +42,22 @@ export class VacanciesController {
   async listAvailable() {
     const vacancies = await this.listPublishedVacancies.execute();
     return vacancies.map((vacancy) => this.serialize(vacancy));
+  }
+
+  @Get(':vacancyId/match')
+  @Roles('candidate')
+  @ApiOperation({
+    summary: 'Calcula Match IA con habilidades técnicas extraídas del CV',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Porcentaje de compatibilidad y evidencia trazable por habilidad',
+  })
+  async match(
+    @Param('vacancyId') vacancyId: string,
+    @CurrentUser('id') candidateId: string,
+  ) {
+    return this.calculateVacancyMatch.execute(vacancyId, candidateId);
   }
 
   @Get()
@@ -75,11 +96,25 @@ export class VacanciesController {
     return this.serialize(vacancy);
   }
 
+  @Patch(':vacancyId')
+  @Roles('recruiter')
+  @ApiOperation({ summary: 'Edita una vacante y cambia su estado' })
+  @ApiBody({ type: UpdateVacancyDto })
+  async update(
+    @Param('vacancyId') vacancyId: string,
+    @CurrentUser('id') recruiterId: string,
+    @Body() dto: UpdateVacancyDto,
+  ) {
+    const vacancy = await this.updateVacancy.execute(recruiterId, vacancyId, dto);
+    return this.serialize(vacancy);
+  }
+
   private serialize(vacancy: Vacancy) {
     return {
       id: vacancy.id,
       name: vacancy.name,
       description: vacancy.description,
+      salary: vacancy.salary,
       slug: vacancy.slug,
       status: vacancy.status,
       organizationId: vacancy.organizationId,

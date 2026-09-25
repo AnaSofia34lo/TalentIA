@@ -34,6 +34,7 @@ export class CreateVacancyUseCase {
       vacancy = new Vacancy({
         name: dto.name,
         description: dto.description,
+        salary: dto.salary,
         createdByUserId: recruiterId,
         organizationId,
       });
@@ -48,10 +49,12 @@ export class CreateVacancyUseCase {
     return this.vacancies.create({
       name: vacancy.name,
       description: vacancy.description,
+      salary: vacancy.salary,
       createdByUserId: recruiterId,
       organizationId,
       slug,
       status: 'published',
+      technicalSkills: dto.technicalSkills,
     });
   }
 

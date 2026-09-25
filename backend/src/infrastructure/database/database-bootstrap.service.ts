@@ -46,6 +46,13 @@ export class DatabaseBootstrapService implements OnApplicationBootstrap {
         `);
       }
 
+      if (tableNames.has('vacancies')) {
+        await this.prisma.$executeRawUnsafe(`
+          ALTER TABLE vacancies
+          ADD COLUMN IF NOT EXISTS salary INTEGER NOT NULL DEFAULT 0;
+        `);
+      }
+
       if (tableNames.has('users')) {
         await this.prisma.$executeRawUnsafe(`
           UPDATE users SET role = 'recruiter' WHERE role::text = 'admin';

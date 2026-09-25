@@ -120,13 +120,13 @@ describe('TechnicalSkill entity — skills técnicos (HU-07)', () => {
     ).toBeNull();
   });
 
-  it('usa proficiency 50 por defecto y recorta al rango 0-100', () => {
+  it('usa proficiency 60 por defecto y recorta al rango 0-100', () => {
     const withDefault = TechnicalSkill.fromExtracted('u1', {
       name: 'Figma',
       estimatedProficiency: null,
     });
     expect(withDefault).not.toBeNull();
-    expect(withDefault!.estimatedProficiency).toBe(50);
+    expect(withDefault!.estimatedProficiency).toBe(60);
 
     const clamped = TechnicalSkill.fromExtracted('u1', {
       name: 'TypeScript',

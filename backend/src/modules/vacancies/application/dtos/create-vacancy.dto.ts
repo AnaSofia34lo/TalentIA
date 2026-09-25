@@ -1,5 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateVacancyDto {
   @ApiProperty({
@@ -30,4 +40,26 @@ export class CreateVacancyDto {
     message: 'La descripción no puede superar 5000 caracteres.',
   })
   description: string;
+
+  @ApiProperty({
+    example: 6500000,
+    description: 'Salario mensual ofrecido en pesos colombianos.',
+    minimum: 0,
+  })
+  @IsInt({ message: 'El salario debe ser un número entero.' })
+  @Min(0, { message: 'El salario no puede ser negativo.' })
+  salary: number;
+
+  @ApiProperty({
+    example: ['Java', 'Python', 'NestJS'],
+    description: 'Habilidades técnicas usadas para calcular Match IA (HU-08).',
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  technicalSkills?: string[];
 }
