@@ -14,38 +14,42 @@ TalentIA es una plataforma para gestión de contratación con foco en automatiza
 - Seguridad: JWT de Supabase
 - Documentación: Swagger
 
-## Historias de Usuario HU
+## Estado de las historias de usuario
 
-HU-01: El registro de candidatos está implementado en backend y frontend. Usa Supabase
-Auth para crear la cuenta y emitir la sesión JWT, Prisma para sincronizar el
-usuario local y Swagger para probar `POST /auth/register`. El frontend valida en
-vivo correo, contraseña y confirmación, y redirige a `/candidato/cv` después del
-registro exitoso.
+| Historia | Capacidad | Estado actual |
+| --- | --- | --- |
+| HU-01 | Registro de candidatos | Implementada |
+| HU-02 | Inicio de sesión | Implementada |
+| HU-03 | Información personal del candidato | Implementada |
+| HU-04 | Carga de hoja de vida en PDF | Implementada |
+| HU-05 | Registro de experiencia laboral | Implementada |
+| HU-06 | Extracción de experiencia laboral con IA | Implementada |
+| HU-07 | Identificación de certificaciones | Backend implementado; visualización dedicada pendiente |
+| HU-08 | Skills técnicas y Match IA trazable | Implementada |
+| HU-09 | Nombre de la vacante | Implementada |
+| HU-10 | Descripción del cargo | Implementada |
+| HU-11 | Salario de la vacante | Implementada |
+| HU-12 | Competencias técnicas de la vacante | Implementada |
+| HU-13 | Cambio de estado de la vacante | Implementada |
 
-HU-02: El inicio de sesión HU-02 usa el mismo flujo de Supabase Authentication y JWT.
-Swagger documenta `POST /auth/login`, sus parámetros, ejemplos, validaciones y
-respuestas para cuenta inexistente, contraseña incorrecta y acceso exitoso.
+### Candidato
 
-HU-03: Perfil del candidato. Permite consultar y actualizar los datos personales
-del candidato mediante Prisma, Supabase Authentication/JWT y rutas protegidas.
-El correo es inmutable y los cambios se sincronizan globalmente en el frontend.
+El candidato puede registrarse, iniciar sesión, completar su perfil, cargar un PDF,
+registrar experiencia y consultar vacantes publicadas. El análisis con Gemini extrae
+experiencia, certificaciones y habilidades técnicas, y estas últimas alimentan el
+porcentaje de compatibilidad con cada vacante junto con evidencia por habilidad.
 
-HU-04: Subir hoja de vida. Permite al candidato subir su hoja de vida en formato
-PDF para adjuntarla a su perfil y utilizarla en sus postulaciones. La solución
-usa Supabase Storage, validación de formato y tamaño, acceso exclusivo del
-candidato autenticado, integración entre Next.js y NestJS y documentación del
-servicio en Swagger.
+### Reclutador
 
-HU-05: Registrar experiencia. Permite al candidato registrar y actualizar su
-experiencia laboral, incluyendo cargo actual, empresa, años de experiencia y
-resumen profesional, para mejorar su compatibilidad con las vacantes y permitir
-una evaluación correcta. Incluye validaciones en frontend y backend, acceso
-exclusivo del candidato autenticado, persistencia mediante Prisma y
-documentación en Swagger.
+El reclutador puede crear, consultar y editar vacantes. Cada vacante incluye nombre,
+descripción, salario, competencias técnicas y estado (`draft`, `published`, `paused`
+o `closed`). Las vacantes publicadas son visibles para candidatos.
 
-## Requisitos funcionales y de negocio
+### Alcance pendiente
 
-Se conservan las historias de usuario del proyecto, incluyendo perfiles de recruiter, candidato y organización del flujo de reclutamiento, sin implementar todavía la funcionalidad completa del negocio.
+El modelo de datos ya contempla postulaciones, entrevistas y evaluaciones, pero el
+flujo completo para que un candidato se postule y gestione su proceso de selección
+no forma parte de las HU-01 a HU-13 implementadas en esta entrega.
 
 ## Enlaces de integración
 
@@ -63,6 +67,11 @@ Se conservan las historias de usuario del proyecto, incluyendo perfiles de recru
 - `backend/`: API, Prisma, Swagger, JWT, seguridad
 - `frontend/`: Next.js, UI y conexión a Supabase
 
+## Documentación por aplicación
+
+- [Backend](backend/README.md): API, autenticación, persistencia, IA y Swagger.
+- [Frontend](frontend/README.md): pantallas, flujos de usuario e integración con la API.
+
 ## Ejecución rápida
 
 ```bash
@@ -78,7 +87,5 @@ npm install
 npm run dev
 ```
 
-## Documentación adicional
+Inicia primero el backend para que el frontend pueda consumir la API local.
 
-- Backend: [backend/README.md](backend/README.md)
-- Frontend: [frontend/README.md](frontend/README.md)

@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service.js';
@@ -14,6 +15,7 @@ export class CandidatesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async getProfile(userId: string) {
@@ -134,6 +136,11 @@ export class CandidatesService {
         kind: 'cv',
         sizeBytes: file.size,
       },
+    });
+
+    this.eventEmitter.emit('candidate.cv.uploaded', {
+      userId,
+      storageAssetId: asset.id,
     });
 
     return {

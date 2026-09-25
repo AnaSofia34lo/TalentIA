@@ -263,3 +263,23 @@ export function LockIcon({ className = '', size = 18 }: IconProps) {
     </svg>
   );
 }
+
+export function EyeIcon({ className = '', size = 18 }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon({ className = '', size = 18 }: IconProps) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M3 3l18 18" />
+      <path d="M10.6 10.7a2.8 2.8 0 003.7 3.7" />
+      <path d="M7.1 7.3C4.7 8.7 3 12 3 12s3.5 6.5 9.5 6.5c1.6 0 3-.3 4.2-.8" />
+      <path d="M12.8 5.6c2.9.3 5.6 2.2 7.7 6.4 0 0-1.1 2-2.9 3.6" />
+    </svg>
+  );
+}

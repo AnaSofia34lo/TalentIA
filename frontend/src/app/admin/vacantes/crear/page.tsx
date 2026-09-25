@@ -1,27 +1,58 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeftIcon, LogoSparkIcon, CheckIcon } from '../../../../shared/components/ui/Icons';
+import { useAuth } from '../../../../shared/context/AuthContext';
 
 export default function CrearVacantePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editingId = searchParams.get('edit');
+  const { createVacancy, updateVacancy, listVacancies } = useAuth();
+  const [name, setName] = useState('Desarrollador de Software (Java & Python)');
+  const [description, setDescription] = useState(
+    'Buscamos una persona con dominio de Java y Python que participe activamente en el levantamiento de requisitos: que sepa entender lo que se le pide, delimitar el alcance real y ejecutarlo. Evaluamos aptitud demostrada, no solo experiencia listada en el CV.',
+  );
+  const [salary, setSalary] = useState('6500000');
+  const [status, setStatus] = useState('published');
   const [techSkills, setTechSkills] = useState([
     'Java',
     'Python',
     'Levantamiento de requisitos',
-    'Delimitación de alcance'
+    'Delimitación de alcance',
   ]);
   const [softSkills, setSoftSkills] = useState([
     'Autonomía',
     'Pensamiento analítico',
-    'Comunicación técnica'
+    'Comunicación técnica',
   ]);
   const [techInput, setTechInput] = useState('');
   const [softInput, setSoftInput] = useState('');
   const [aiGenerated, setAiGenerated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!editingId) return;
+    void (async () => {
+      try {
+        const vacancies = await listVacancies();
+        const vacancy = vacancies.find((item) => item.id === editingId);
+        if (!vacancy) throw new Error('No se encontró la vacante seleccionada.');
+        setName(vacancy.name);
+        setDescription(vacancy.description);
+        setSalary(String(vacancy.salary));
+        setStatus(vacancy.status);
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : 'No fue posible cargar la vacante.');
+      }
+    })();
+    // La carga solo depende del identificador de la vacante en edición.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId]);
 
   const handleAddTech = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && techInput.trim()) {
@@ -59,15 +90,57 @@ export default function CrearVacantePage() {
     }, 600);
   };
 
-  const handlePublish = () => {
-    router.push('/admin/vacantes');
+  const handlePublish = async () => {
+    setError('');
+    const trimmedName = name.trim();
+    const trimmedDescription = description.trim();
+    const salaryAmount = Number(salary);
+
+    if (trimmedName.length < 3) {
+      setError('El nombre de la vacante debe tener al menos 3 caracteres.');
+      return;
+    }
+    if (trimmedDescription.length < 20) {
+      setError('La descripción debe tener al menos 20 caracteres.');
+      return;
+    }
+    if (!Number.isInteger(salaryAmount) || salaryAmount < 0) {
+      setError('Ingresa un salario mensual válido en pesos colombianos.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const data = {
+        name: trimmedName,
+        description: trimmedDescription,
+        salary: salaryAmount,
+      };
+      if (editingId) {
+        await updateVacancy(editingId, { ...data, status });
+      } else {
+        await createVacancy({ ...data, technicalSkills: techSkills });
+      }
+      router.push('/admin/vacantes');
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'No fue posible crear la vacante.',
+      );
+    } finally {
+      setLoading(false);
+    }
   };
+
+  let submitLabel = editingId ? 'Guardar cambios' : 'Publicar vacante';
+  if (loading) submitLabel = 'Guardando…';
 
   return (
     <div>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Nueva vacante</h1>
+          <h1 className="page-title">{editingId ? 'Editar vacante' : 'Nueva vacante'}</h1>
           <p className="page-sub">
             Completa la información y deja que la IA construya la entrevista por ti.
           </p>
@@ -79,17 +152,18 @@ export default function CrearVacantePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 items-start">
-        {/* Left Form Content */}
         <div className="flex flex-col gap-4.5">
           <div className="card card-pad">
             <h3 className="text-base font-bold mb-4">Información general</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="field">
-                <label>Cargo</label>
+                <label htmlFor="vacancy-name">Cargo</label>
                 <input
+                  id="vacancy-name"
                   className="input"
                   placeholder="Ej. Desarrollador de Software"
-                  defaultValue="Desarrollador de Software (Java & Python)"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
                 />
               </div>
               <div className="field">
@@ -142,6 +216,19 @@ export default function CrearVacantePage() {
               placeholder="Agregar competencia técnica y presionar Enter..."
             />
           </div>
+              <div className="field">
+                <label htmlFor="vacancy-salary">Salario mensual (COP)</label>
+                <input
+                  id="vacancy-salary"
+                  className="input"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  placeholder="Ej. 6500000"
+                  value={salary}
+                  onChange={(event) => setSalary(event.target.value)}
+                />
+              </div>
 
           <div className="card card-pad">
             <h3 className="text-base font-bold mb-4">Competencias blandas</h3>
@@ -169,11 +256,13 @@ export default function CrearVacantePage() {
           <div className="card card-pad">
             <h3 className="text-base font-bold mb-4">Descripción y casos de uso</h3>
             <div className="field mb-3.5">
-              <label>Descripción del cargo</label>
+              <label htmlFor="vacancy-description">Descripción del cargo</label>
               <textarea
+                id="vacancy-description"
                 className="input"
                 rows={4}
-                defaultValue="Buscamos una persona con dominio de Java y Python que participe activamente en el levantamiento de requisitos: que sepa entender lo que se le pide, delimitar el alcance real y ejecutarlo. Evaluamos aptitud demostrada, no solo experiencia listada en el CV."
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
               />
             </div>
             <div className="field">
@@ -187,14 +276,13 @@ export default function CrearVacantePage() {
           </div>
         </div>
 
-        {/* Right Sidebar Widget */}
         <div className="flex flex-col gap-4.5 sticky top-[86px]">
           <div className="card card-pad text-center">
             <div
               className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center text-white mx-auto mb-3.5"
               style={{
                 background: 'var(--grad-brand)',
-                boxShadow: '0 8px 18px rgba(108,99,255,.3)'
+                boxShadow: '0 8px 18px rgba(108,99,255,.3)',
               }}
             >
               <LogoSparkIcon size={20} />
@@ -253,13 +341,20 @@ export default function CrearVacantePage() {
             </div>
           )}
 
+          {error && (
+            <div className="rounded-lg bg-[var(--red-tint)] text-[var(--red)] text-sm p-3" role="alert">
+              {error}
+            </div>
+          )}
+
           <button
             type="button"
             className="btn btn-primary btn-block py-3"
-            onClick={handlePublish}
+            onClick={() => void handlePublish()}
+            disabled={loading}
           >
             <CheckIcon size={16} />
-            Publicar vacante
+            {submitLabel}
           </button>
         </div>
       </div>

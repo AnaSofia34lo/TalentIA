@@ -51,7 +51,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Inicia sesión y devuelve un JWT',
-    description: 'Endpoint de autenticación para usuarios del sistema. Retorna un access token JWT con el rol del usuario.',
+    description:
+      'Endpoint compartido para candidatos y reclutadores. Autentica con Supabase, sincroniza app_metadata.role desde Prisma y retorna access token JWT con el rol del usuario (candidate o recruiter).',
   })
   @ApiBody({
     schema: {
@@ -60,12 +61,12 @@ export class AuthController {
       properties: {
         email: {
           type: 'string',
-          example: 'ana.ramirez@talentia.co',
-          description: 'Correo electrónico del usuario.',
+          example: 'reclutador@prueba.com',
+          description: 'Correo del candidato o reclutador ya registrado.',
         },
         password: {
           type: 'string',
-          example: 'Password123!',
+          example: 'Reclutador123*',
           description: 'Contraseña del usuario.',
         },
       },
@@ -73,7 +74,7 @@ export class AuthController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Login exitoso',
+    description: 'Login exitoso (candidato o reclutador)',
     schema: {
       type: 'object',
       example: {
@@ -84,8 +85,9 @@ export class AuthController {
         expires_at: 1780000000,
         user: {
           id: '2e3d1d5c-6f5f-4d30-a9dd-4e4cfd4b4f87',
-          email: 'ana.ramirez@talentia.co',
-          role: 'candidate',
+          email: 'reclutador@prueba.com',
+          role: 'recruiter',
+          organizationId: 'a7d6d5b4-0c3b-4f88-9a0f-2e2f7f7c4c11',
         },
       },
     },

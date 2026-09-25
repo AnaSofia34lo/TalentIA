@@ -6,8 +6,8 @@ import { useAuth } from "../../shared/context/AuthContext";
 import {
   LogoSparkIcon,
   MailIcon,
-  LockIcon,
 } from "../../shared/components/ui/Icons";
+import { PasswordInput } from "../../shared/components/PasswordInput";
 import { UserRole } from "../../shared/types";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -44,12 +44,13 @@ function emailError(email: string) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, registerCandidate } = useAuth();
+  const { login, registerCandidate, registerRecruiter } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole>("candidate");
   const [registerMode, setRegisterMode] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -62,6 +63,10 @@ export default function LoginPage() {
     setSelectedRole(role);
     setRegisterMode(role === "candidate");
     setError("");
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    setCompanyName("");
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -77,15 +82,28 @@ export default function LoginPage() {
       if (!confirmPassword) return setError("Campo obligatorio");
       if (password !== confirmPassword)
         return setError("Las contraseñas deben ser iguales.");
+      if (selectedRole === "recruiter" && companyName.trim().length < 2) {
+        return setError("Ingresa el nombre de la empresa.");
+      }
     }
 
     try {
       setLoading(true);
       if (registerMode) {
-        await registerCandidate(email, password, confirmPassword);
-        router.push("/candidato/cv");
+        if (selectedRole === "recruiter") {
+          await registerRecruiter(
+            email,
+            password,
+            confirmPassword,
+            companyName.trim(),
+          );
+          router.push("/admin/dashboard");
+        } else {
+          await registerCandidate(email, password, confirmPassword);
+          router.push("/candidato/cv");
+        }
       } else {
-        const role = await login(email, password);
+        const role = await login(email, password, selectedRole);
         router.push(
           role === "recruiter" ? "/admin/dashboard" : "/candidato/cv",
         );
@@ -143,7 +161,9 @@ export default function LoginPage() {
           </h1>
           <p className="text-[var(--ink-soft)] text-sm mb-6">
             {registerMode
-              ? "Regístrate como candidato para comenzar tu proceso."
+              ? selectedRole === "recruiter"
+                ? "Registra tu empresa para publicar vacantes."
+                : "Regístrate como candidato para comenzar tu proceso."
               : "Inicia sesión para continuar en tu espacio de trabajo."}
           </p>
 
@@ -169,6 +189,20 @@ export default function LoginPage() {
             className="flex flex-col gap-4"
             noValidate
           >
+            {registerMode && selectedRole === "recruiter" && (
+              <div className="field">
+                <label htmlFor="companyName">Nombre de la empresa</label>
+                <input
+                  id="companyName"
+                  className="input"
+                  type="text"
+                  value={companyName}
+                  onChange={(event) => setCompanyName(event.target.value)}
+                  placeholder="Innovaciones Andinas S.A.S."
+                />
+              </div>
+            )}
+
             <div className="field">
               <label htmlFor="email">Correo electrónico</label>
               <div className="input-icon-wrap">
@@ -191,22 +225,14 @@ export default function LoginPage() {
               )}
             </div>
 
-            <div className="field">
-              <label htmlFor="password">Contraseña</label>
-              <div className="input-icon-wrap">
-                <span className="icon">
-                  <LockIcon size={18} />
-                </span>
-                <input
-                  id="password"
-                  className="input"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Ingresa tu contraseña"
-                />
-              </div>
-            </div>
+            <PasswordInput
+              id="password"
+              label="Contraseña"
+              value={password}
+              onChange={setPassword}
+              placeholder="Ingresa tu contraseña"
+              autoComplete={registerMode ? "new-password" : "current-password"}
+            />
 
             <div className="rounded-xl border border-[var(--line)] bg-[var(--bg)] p-3">
               <p className="text-xs font-semibold text-[var(--ink)] mb-2">
@@ -232,34 +258,29 @@ export default function LoginPage() {
 
             {registerMode && (
               <>
-                <div className="field">
-                  <label htmlFor="confirmPassword">Confirmar contraseña</label>
-                  <div className="input-icon-wrap">
-                    <span className="icon">
-                      <LockIcon size={18} />
-                    </span>
-                    <input
-                      id="confirmPassword"
-                      className={`input ${confirmPassword && !passwordsMatch ? "border-[var(--red)]" : ""}`}
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(event) =>
-                        setConfirmPassword(event.target.value)
-                      }
-                      placeholder="Repite tu contraseña"
-                    />
-                  </div>
-                  {confirmPassword && !passwordsMatch && (
-                    <p className="text-xs text-[var(--red)] mt-1">
-                      Las contraseñas deben ser iguales.
-                    </p>
-                  )}
-                  {passwordsMatch && (
-                    <p className="text-xs text-[var(--green)] mt-1">
-                      ✓ Las contraseñas coinciden.
-                    </p>
-                  )}
-                </div>
+                <PasswordInput
+                  id="confirmPassword"
+                  label="Confirmar contraseña"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  placeholder="Repite tu contraseña"
+                  className={
+                    confirmPassword && !passwordsMatch
+                      ? "border-[var(--red)]"
+                      : ""
+                  }
+                  autoComplete="new-password"
+                />
+                {confirmPassword && !passwordsMatch && (
+                  <p className="text-xs text-[var(--red)] -mt-2">
+                    Las contraseñas deben ser iguales.
+                  </p>
+                )}
+                {passwordsMatch && (
+                  <p className="text-xs text-[var(--green)] -mt-2">
+                    ✓ Las contraseñas coinciden.
+                  </p>
+                )}
               </>
             )}
 
@@ -284,20 +305,18 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {selectedRole === "candidate" && (
-            <button
-              type="button"
-              onClick={() => {
-                setRegisterMode(!registerMode);
-                setError("");
-              }}
-              className="w-full text-center text-sm font-semibold text-[var(--purple)] mt-5 hover:underline"
-            >
-              {registerMode
-                ? "Ya tengo una cuenta. Iniciar sesión"
-                : "¿No tienes cuenta? Regístrate"}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              setRegisterMode(!registerMode);
+              setError("");
+            }}
+            className="w-full text-center text-sm font-semibold text-[var(--purple)] mt-5 hover:underline"
+          >
+            {registerMode
+              ? "Ya tengo una cuenta. Iniciar sesión"
+              : "¿No tienes cuenta? Regístrate"}
+          </button>
         </div>
       </div>
     </div>
