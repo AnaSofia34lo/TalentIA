@@ -57,7 +57,11 @@ Endpoints documentados:
 - `GET /`: endpoint público de disponibilidad.
 - `GET /health`: endpoint público de salud.
 - `GET /candidate/resume/analysis`: experiencia, certificaciones y skills extraídos por IA (HU-06 / HU-07).
-- `POST /vacancies`: crea vacante con nombre y descripción (HU-09 / HU-10, solo `recruiter`).
+- `POST /vacancies`: crea una vacante con nombre, descripción, salario y skills técnicas.
+- `GET /vacancies`: lista las vacantes del reclutador autenticado.
+- `PATCH /vacancies/:vacancyId`: edita una vacante y cambia su estado (HU-13).
+- `GET /vacancies/available`: lista vacantes publicadas para candidatos.
+- `GET /vacancies/:vacancyId/match`: calcula el Match IA y devuelve evidencia por skill (HU-08).
 
 En Swagger usa **Authorize** con el valor `Bearer <access_token>` después de iniciar sesión.
 
@@ -247,15 +251,39 @@ También se exponen en `GET /candidate/resume/analysis` (`certifications`,
 el autocompletado de experiencia (HU-06 → HU-05) sí se refleja en el frontend
 existente de `/candidato/cv`.
 
-### HU-09 / HU-10: Nombre y descripción de vacante
+### HU-08: Skills técnicas y Match IA
 
-`POST /vacancies` (rol `recruiter`) recibe `name` (mín. 3) y `description`
-(mín. 20). El módulo `vacancies` (Clean Architecture) asocia la vacante al
-usuario creador (`createdByUserId`) y a su `organizationId`. En Prisma el
-nombre se guarda en la columna existente `title` (no se recreó el modelo).
+El análisis de CV de `resume-intelligence` identifica habilidades técnicas y las
+persiste con una proficiencia estimada entre 0 y 100. Al consultar
+`GET /vacancies/:vacancyId/match`, el backend compara esas skills con las requeridas
+por la vacante, calcula un porcentaje ponderado y devuelve evidencia trazable,
+incluyendo la fuente `candidate_cv_ai_analysis` o `not_found_in_candidate_cv`.
+
+El reclutador registra las skills técnicas al crear o editar la vacante. El candidato
+puede consultar el resultado para las vacantes publicadas.
+
+### HU-09 / HU-10 / HU-11 / HU-12: Datos de la vacante
+
+`POST /vacancies` (rol `recruiter`) recibe:
+
+- `name`: nombre o cargo, mínimo 3 caracteres (HU-09).
+- `description`: descripción del cargo, entre 20 y 5000 caracteres (HU-10).
+- `salary`: salario mensual entero no negativo (HU-11).
+- `technicalSkills`: lista opcional de competencias técnicas, máximo 50 (HU-12).
+
+El módulo `vacancies` (Clean Architecture) asocia la vacante al usuario creador y a
+su organización. En Prisma, el nombre se guarda en `Vacancy.title` y las
+competencias en `VacancySkill`.
+
+### HU-13: Estado de la vacante
+
+`PATCH /vacancies/:vacancyId` permite al reclutador actualizar los datos de la
+vacante y su estado. Los estados válidos son `draft`, `published`, `paused` y
+`closed`. Solo las vacantes en estado `published` aparecen en
+`GET /vacancies/available`.
 
 Swagger: tag **Vacantes**. El formulario Next.js en `/admin/vacantes/crear`
-envía solo esos dos campos al publicar.
+envía los datos de la vacante al publicar o editar.
 
 Login: `POST /auth/login` es compartido para candidate y recruiter; el
 frontend valida que el rol coincida con la pestaña seleccionada.
