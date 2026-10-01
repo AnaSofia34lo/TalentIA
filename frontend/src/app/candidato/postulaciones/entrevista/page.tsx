@@ -55,9 +55,9 @@ export default function EntrevistaActivaPage() {
           <button
             type="button"
             className="btn btn-primary btn-block py-3"
-            onClick={() => router.push('/candidato/entrevistas')}
+            onClick={() => router.push('/candidato/postulaciones')}
           >
-            Volver a mis entrevistas
+            Volver a mis postulaciones
           </button>
         </div>
       </div>
@@ -66,9 +66,8 @@ export default function EntrevistaActivaPage() {
 
   return (
     <div className="interview-shell">
-      {/* Interview Topbar */}
       <div className="interview-topbar">
-        <Link href="/candidato/entrevistas" className="btn btn-ghost btn-sm">
+        <Link href="/candidato/postulaciones" className="btn btn-ghost btn-sm">
           <ArrowLeftIcon size={16} />
           Salir
         </Link>
@@ -92,7 +91,6 @@ export default function EntrevistaActivaPage() {
         </div>
       </div>
 
-      {/* Live Warning Notice */}
       <div className="live-notice">
         <span className="shrink-0 mt-0.5">
           <AlertTriangleIcon size={18} />
@@ -102,22 +100,13 @@ export default function EntrevistaActivaPage() {
         </div>
       </div>
 
-      {/* Main Question Card */}
       <div className="interview-card">
         <div className="interview-webcam">
           <VideoIcon size={22} />
         </div>
 
-        {/* Circular Timer Ring */}
         <svg className="timer-ring mx-auto mb-5.5 block" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="42"
-            fill="none"
-            stroke="var(--line)"
-            strokeWidth="7"
-          />
+          <circle cx="50" cy="50" r="42" fill="none" stroke="var(--line)" strokeWidth="7" />
           <circle
             cx="50"
             cy="50"
@@ -130,15 +119,7 @@ export default function EntrevistaActivaPage() {
             strokeDashoffset="90"
             transform="rotate(-90 50 50)"
           />
-          <text
-            x="50"
-            y="55"
-            textAnchor="middle"
-            fontSize="20"
-            fontWeight="700"
-            fill="var(--ink)"
-            fontFamily="Poppins, sans-serif"
-          >
+          <text x="50" y="55" textAnchor="middle" fontSize="20" fontWeight="700" fill="var(--ink)" fontFamily="Poppins, sans-serif">
             00:42
           </text>
         </svg>
@@ -152,11 +133,7 @@ export default function EntrevistaActivaPage() {
         </div>
 
         <div className="interview-actions">
-          <button
-            type="button"
-            className="btn btn-accent px-6 py-3"
-            onClick={handleFinish}
-          >
+          <button type="button" className="btn btn-accent px-6 py-3" onClick={handleFinish}>
             Finalizar entrevista
             <ArrowRightIcon size={16} />
           </button>

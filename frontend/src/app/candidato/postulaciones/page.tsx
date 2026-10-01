@@ -30,7 +30,7 @@ function statusLabel(status: string): string {
   return status;
 }
 
-export default function CandidatoEntrevistasPage() {
+export default function CandidatoPostulacionesPage() {
   const { listCandidateApplications } = useAuth();
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +73,7 @@ export default function CandidatoEntrevistasPage() {
   const applicationAction = (application: ApplicationItem) => {
     if (application.status === 'pending' || application.status === 'interview_scheduled') {
       return (
-        <Link href="/candidato/entrevistas/activa" className={`${actionButtonClass} btn-accent`}>
+        <Link href="/candidato/postulaciones/entrevista" className={`${actionButtonClass} btn-accent`}>
           Iniciar
           <ArrowRightIcon size={14} />
         </Link>

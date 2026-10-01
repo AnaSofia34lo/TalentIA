@@ -142,7 +142,7 @@ export default function CandidatoInicioPage() {
                 </div>
               </div>
             </div>
-            <Link href="/candidato/entrevistas/activa" className="btn btn-accent btn-sm">
+            <Link href="/candidato/postulaciones/entrevista" className="btn btn-accent btn-sm">
               Iniciar
               <ArrowRightIcon size={14} />
             </Link>
