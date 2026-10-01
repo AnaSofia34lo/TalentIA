@@ -21,9 +21,10 @@ type ApplicationItem = {
 };
 
 function statusLabel(status: string): string {
-  if (status === 'pending') return 'Pendiente';
-  if (status === 'reviewed') return 'En revisión';
-  if (status === 'shortlisted') return 'Preseleccionado';
+  if (status === 'applied' || status === 'pending' || status === 'interview_scheduled') return 'Postulado';
+  if (status === 'reviewed') return 'Pendiente';
+  if (status === 'completed') return 'Finalizado';
+  if (status === 'technical_test' || status === 'shortlisted') return 'Prueba Técnica';
   if (status === 'interview_scheduled') return 'Entrevista programada';
   if (status === 'rejected') return 'No seleccionado';
   if (status === 'hired') return 'Contratado';
@@ -71,7 +72,7 @@ export default function CandidatoPostulacionesPage() {
   const actionButtonClass = 'btn btn-sm w-32 justify-center';
 
   const applicationAction = (application: ApplicationItem) => {
-    if (application.status === 'pending' || application.status === 'interview_scheduled') {
+    if (application.status === 'applied' || application.status === 'pending' || application.status === 'interview_scheduled') {
       return (
         <Link href={`/candidato/postulaciones/entrevista?vacancyId=${encodeURIComponent(application.vacancyId)}&vacancy=${encodeURIComponent(application.vacancy.title)}`} className={`${actionButtonClass} btn-accent`}>
           Iniciar
@@ -79,10 +80,25 @@ export default function CandidatoPostulacionesPage() {
         </Link>
       );
     }
-    if (application.status === 'rejected' || application.status === 'hired') {
+    if (application.status === 'reviewed') {
+      return (
+        <Link href="/candidato/resultados" className={`${actionButtonClass} btn-outline`}>
+          Ver resumen
+        </Link>
+      );
+    }
+    if (application.status === 'completed') {
       return (
         <Link href="/candidato/resultados" className={`${actionButtonClass} btn-outline`}>
           Ver resultado
+        </Link>
+      );
+    }
+    if (application.status === 'technical_test' || application.status === 'shortlisted') {
+      return (
+        <Link href="/candidato/prueba-tecnica" className={`${actionButtonClass} btn-accent`}>
+          Hacer prueba
+          <ArrowRightIcon size={14} />
         </Link>
       );
     }

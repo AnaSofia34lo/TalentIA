@@ -63,6 +63,22 @@ interface AuthContextType {
     submittedAt: string;
     vacancy: { title: string; description: string; salary: number; status: string; organization: { name: string } };
   }>>;
+  startTechnicalInterview: (vacancyId: string) => Promise<{
+    interviewId: string;
+    status: string;
+    vacancy: { title: string; organization: string };
+    questions: Array<{ id: string; category: string; prompt: string; answer: string | null }>;
+  }>;
+  startBehavioralInterview: (vacancyId: string) => Promise<{
+    interviewId: string;
+    status: string;
+    vacancy: { title: string; organization: string };
+    questions: Array<{ id: string; category: string; prompt: string; answer: string | null }>;
+  }>;
+  submitTechnicalAnswer: (interviewId: string, questionId: string, responseText: string) => Promise<{ id: string; questionId: string; responseText: string | null }>;
+  markVideoQuestion: (interviewId: string, questionId: string, timestampMs: number) => Promise<{ id: string; questionId: string; timestampMs: number }>;
+  completeTechnicalInterview: (interviewId: string) => Promise<{ interviewId: string; status: string }>;
+  uploadInterviewVideo: (interviewId: string, video: Blob) => Promise<{ interviewId: string; videoUrl: string }>;
   getVacancyMatch: (vacancyId: string) => Promise<{ matchPercentage: number; evaluatedSkills: number }>;
   logout: () => Promise<void>;
   markAllNotifsRead: () => void;
@@ -246,6 +262,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return requestCandidate('applications');
   };
 
+  const startTechnicalInterview = async (vacancyId: string) => {
+    return requestApi('candidate/interviews/technical/start', {
+      method: 'POST',
+      body: JSON.stringify({ vacancyId }),
+    });
+  };
+
+  const startBehavioralInterview = async (vacancyId: string) => {
+    return requestApi('candidate/interviews/behavioral/start', {
+      method: 'POST',
+      body: JSON.stringify({ vacancyId }),
+    });
+  };
+
+  const submitTechnicalAnswer = async (interviewId: string, questionId: string, responseText: string) => {
+    return requestApi(`candidate/interviews/${interviewId}/answers`, {
+      method: 'POST',
+      body: JSON.stringify({ questionId, responseText }),
+    });
+  };
+
+  const markVideoQuestion = async (interviewId: string, questionId: string, timestampMs: number) => {
+    return requestApi(`candidate/interviews/${interviewId}/video-markers`, {
+      method: 'POST',
+      body: JSON.stringify({ questionId, timestampMs }),
+    });
+  };
+
+  const completeTechnicalInterview = async (interviewId: string) => {
+    return requestApi(`candidate/interviews/${interviewId}/complete`, { method: 'PATCH' });
+  };
+
+  const uploadInterviewVideo = async (interviewId: string, video: Blob) => {
+    const formData = new FormData();
+    formData.append('video', video, `entrevista-${interviewId}.webm`);
+    return requestApi(`candidate/interviews/${interviewId}/video`, { method: 'POST', body: formData });
+  };
+
   const getVacancyMatch = async (vacancyId: string) => {
     return requestApi(`vacancies/${vacancyId}/match`);
   };
@@ -292,7 +346,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else setCandNotifs((previous) => previous.map((notification) => ({ ...notification, unread: false })));
   };
 
-  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, generateInterviewQuestions, updateVacancy, listVacancies, listAvailableVacancies, applyToVacancy, listCandidateApplications, getVacancyMatch, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, generateInterviewQuestions, updateVacancy, listVacancies, listAvailableVacancies, applyToVacancy, listCandidateApplications, startTechnicalInterview, startBehavioralInterview, submitTechnicalAnswer, markVideoQuestion, completeTechnicalInterview, uploadInterviewVideo, getVacancyMatch, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
