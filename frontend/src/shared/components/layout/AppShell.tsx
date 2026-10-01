@@ -172,7 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className={`nav-item ${isNavActive('/candidato/entrevistas') ? 'active' : ''}`}
             >
               <VideoIcon size={18} />
-              <span>Mis entrevistas</span>
+              <span>Mis postulaciones</span>
             </Link>
             <Link
               href="/candidato/resultados"

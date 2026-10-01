@@ -117,6 +117,30 @@ export class CandidatesService {
     return application;
   }
 
+  async listApplications(candidateId: string) {
+    await this.getCandidate(candidateId);
+
+    return this.prisma.candidateApplication.findMany({
+      where: { candidateId },
+      orderBy: { submittedAt: 'desc' },
+      select: {
+        id: true,
+        vacancyId: true,
+        status: true,
+        submittedAt: true,
+        vacancy: {
+          select: {
+            title: true,
+            description: true,
+            salary: true,
+            status: true,
+            organization: { select: { name: true } },
+          },
+        },
+      },
+    });
+  }
+
   async updateCv(userId: string, dto: UpdateCandidateCvDto) {
     await this.getCandidate(userId);
     await this.prisma.candidateProfile.upsert({

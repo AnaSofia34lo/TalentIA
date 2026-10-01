@@ -55,6 +55,13 @@ interface AuthContextType {
   listVacancies: () => Promise<Array<{ id: string; name: string; description: string; salary: number; status: string }>>;
   listAvailableVacancies: () => Promise<Array<{ id: string; name: string; description: string; salary: number; status: string }>>;
   applyToVacancy: (vacancyId: string) => Promise<{ id: string; vacancyId: string; status: string; submittedAt: string }>;
+  listCandidateApplications: () => Promise<Array<{
+    id: string;
+    vacancyId: string;
+    status: string;
+    submittedAt: string;
+    vacancy: { title: string; description: string; salary: number; status: string; organization: { name: string } };
+  }>>;
   getVacancyMatch: (vacancyId: string) => Promise<{ matchPercentage: number; evaluatedSkills: number }>;
   logout: () => Promise<void>;
   markAllNotifsRead: () => void;
@@ -230,6 +237,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return requestApi(`candidate/applications/${vacancyId}`, { method: 'POST' });
   };
 
+  const listCandidateApplications = async () => {
+    return requestCandidate('applications');
+  };
+
   const getVacancyMatch = async (vacancyId: string) => {
     return requestApi(`vacancies/${vacancyId}/match`);
   };
@@ -276,7 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else setCandNotifs((previous) => previous.map((notification) => ({ ...notification, unread: false })));
   };
 
-  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, updateVacancy, listVacancies, listAvailableVacancies, applyToVacancy, getVacancyMatch, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, updateVacancy, listVacancies, listAvailableVacancies, applyToVacancy, listCandidateApplications, getVacancyMatch, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

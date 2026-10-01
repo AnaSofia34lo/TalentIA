@@ -1,21 +1,150 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '../../../shared/context/AuthContext';
 import { EstadoBadge } from '../../../shared/components/ui/Badge';
 import { ArrowRightIcon } from '../../../shared/components/ui/Icons';
 
+type ApplicationItem = {
+  id: string;
+  vacancyId: string;
+  status: string;
+  submittedAt: string;
+  vacancy: {
+    title: string;
+    description: string;
+    salary: number;
+    status: string;
+    organization: { name: string };
+  };
+};
+
+function statusLabel(status: string): string {
+  if (status === 'pending') return 'Pendiente';
+  if (status === 'reviewed') return 'En revisión';
+  if (status === 'shortlisted') return 'Preseleccionado';
+  if (status === 'interview_scheduled') return 'Entrevista programada';
+  if (status === 'rejected') return 'No seleccionado';
+  if (status === 'hired') return 'Contratado';
+  return status;
+}
+
 export default function CandidatoEntrevistasPage() {
+  const { listCandidateApplications } = useAuth();
+  const [applications, setApplications] = useState<ApplicationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const data = await listCandidateApplications();
+        if (active) setApplications(Array.isArray(data) ? data as ApplicationItem[] : []);
+      } catch (requestError) {
+        if (active) {
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : 'No fue posible cargar tus postulaciones.',
+          );
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+    // Carga las postulaciones al entrar a la vista.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const formatDate = (date: string) => {
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) return 'Sin fecha';
+    return new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(parsedDate);
+  };
+  const actionButtonClass = 'btn btn-sm w-32 justify-center';
+
+  const applicationAction = (application: ApplicationItem) => {
+    if (application.status === 'pending' || application.status === 'interview_scheduled') {
+      return (
+        <Link href="/candidato/entrevistas/activa" className={`${actionButtonClass} btn-accent`}>
+          Iniciar
+          <ArrowRightIcon size={14} />
+        </Link>
+      );
+    }
+    if (application.status === 'rejected' || application.status === 'hired') {
+      return (
+        <Link href="/candidato/resultados" className={`${actionButtonClass} btn-outline`}>
+          Ver resultado
+        </Link>
+      );
+    }
+    return (
+      <Link href="/candidato/resultados" className={`${actionButtonClass} btn-outline`}>
+        Ver estado
+      </Link>
+    );
+  };
+
+  const applicationRows = !loading && applications.map((application) => (
+    <tr key={application.id}>
+      <td>
+        <b>{application.vacancy.title}</b>
+      </td>
+      <td className="text-[var(--ink-soft)]">{application.vacancy.organization.name}</td>
+      <td>
+        <EstadoBadge estado={statusLabel(application.status)} />
+      </td>
+      <td className="text-[var(--ink-soft)]">{formatDate(application.submittedAt)}</td>
+      <td>
+        {applicationAction(application)}
+      </td>
+    </tr>
+  ));
+  let renderedApplicationRows: React.ReactNode;
+  if (loading) {
+    renderedApplicationRows = (
+      <tr>
+        <td colSpan={5} className="text-center text-[var(--ink-soft)]">
+          Cargando postulaciones…
+        </td>
+      </tr>
+    );
+  } else if (applications.length === 0) {
+    renderedApplicationRows = (
+      <tr>
+        <td colSpan={5} className="text-center text-[var(--ink-soft)]">
+          Aún no tienes postulaciones.
+        </td>
+      </tr>
+    );
+  } else {
+    renderedApplicationRows = applicationRows;
+  }
+
   return (
     <div>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Mis entrevistas</h1>
+          <h1 className="page-title">Mis postulaciones</h1>
           <p className="page-sub">
-            Historial y próximas entrevistas con IA para tus postulaciones.
+            Consulta el estado de las vacantes a las que te has postulado.
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-[var(--red-tint)] text-[var(--red)] text-sm p-3 mb-4" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="card">
         <div className="table-wrap">
@@ -30,61 +159,7 @@ export default function CandidatoEntrevistasPage() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>
-                  <b>Gestión de Proyectos</b>
-                </td>
-                <td className="text-[var(--ink-soft)]">DS4B</td>
-                <td>
-                  <EstadoBadge estado="Pendiente" />
-                </td>
-                <td className="text-[var(--ink-soft)]">Hoy</td>
-                <td>
-                  <Link
-                    href="/candidato/entrevistas/activa"
-                    className="btn btn-accent btn-sm"
-                  >
-                    Iniciar
-                    <ArrowRightIcon size={14} />
-                  </Link>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <b>Datos e IA</b>
-                </td>
-                <td className="text-[var(--ink-soft)]">DS4B</td>
-                <td>
-                  <EstadoBadge estado="Entrevista enviada · en análisis" />
-                </td>
-                <td className="text-[var(--ink-soft)]">29 jul 2026</td>
-                <td>
-                  <Link
-                    href="/candidato/resultados"
-                    className="btn btn-outline btn-sm"
-                  >
-                    Ver estado
-                  </Link>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <b>Desarrollo de Software</b>
-                </td>
-                <td className="text-[var(--ink-soft)]">DS4B</td>
-                <td>
-                  <EstadoBadge estado="Finalizada por RRHH" />
-                </td>
-                <td className="text-[var(--ink-soft)]">14 jul 2026</td>
-                <td>
-                  <Link
-                    href="/candidato/resultados"
-                    className="btn btn-outline btn-sm"
-                  >
-                    Ver resultado
-                  </Link>
-                </td>
-              </tr>
+              {renderedApplicationRows}
             </tbody>
           </table>
         </div>

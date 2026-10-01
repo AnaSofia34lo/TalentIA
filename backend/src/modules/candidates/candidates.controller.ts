@@ -59,6 +59,13 @@ export class CandidatesController {
     return this.candidates.getCv(userId);
   }
 
+  @Get('applications')
+  @ApiOperation({ summary: 'Lista las postulaciones del candidato autenticado' })
+  @ApiResponse({ status: 200, description: 'Postulaciones del candidato' })
+  listApplications(@CurrentUser('id') userId: string) {
+    return this.candidates.listApplications(userId);
+  }
+
   @Post('applications/:vacancyId')
   @ApiOperation({ summary: 'Postula al candidato a una vacante publicada' })
   @ApiResponse({ status: 201, description: 'Postulación creada correctamente' })

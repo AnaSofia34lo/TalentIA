@@ -19,11 +19,10 @@ type MatchItem = {
 };
 
 export default function CandidatoVacantesPage() {
-  const { listAvailableVacancies, getVacancyMatch, applyToVacancy } = useAuth();
+  const { listAvailableVacancies, listCandidateApplications, getVacancyMatch, applyToVacancy } = useAuth();
   const [vacancies, setVacancies] = useState<VacancyItem[]>([]);
   const [matches, setMatches] = useState<Record<string, MatchItem>>({});
   const [selectedVacancy, setSelectedVacancy] = useState<VacancyItem | null>(null);
-  const [appliedVacancyIds, setAppliedVacancyIds] = useState<string[]>([]);
   const [applying, setApplying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -35,7 +34,8 @@ export default function CandidatoVacantesPage() {
       setApplying(true);
       setError('');
       await applyToVacancy(selectedVacancy.id);
-      setAppliedVacancyIds((current) => [...current, selectedVacancy.id]);
+      setVacancies((current) => current.filter((vacancy) => vacancy.id !== selectedVacancy.id));
+      setSelectedVacancy(null);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -64,9 +64,16 @@ export default function CandidatoVacantesPage() {
       try {
         setLoading(true);
         setError('');
-        const data = (await listAvailableVacancies()) as VacancyItem[];
+        const [data, applicationData] = await Promise.all([
+          listAvailableVacancies(),
+          listCandidateApplications(),
+        ]);
         if (active) {
-          const available = Array.isArray(data) ? data : [];
+          const applications = Array.isArray(applicationData) ? applicationData : [];
+          const appliedIds = new Set(applications.map((application) => application.vacancyId));
+          const available = (Array.isArray(data) ? data : []).filter(
+            (vacancy) => !appliedIds.has(vacancy.id),
+          );
           setVacancies(available);
           const matchEntries = await Promise.all(
             available.map(async (vacancy) => {
@@ -255,20 +262,14 @@ export default function CandidatoVacantesPage() {
             )}
 
             <div className="flex justify-end mt-6">
-              {appliedVacancyIds.includes(selectedVacancy.id) ? (
-                <p className="text-sm font-semibold text-[var(--green)]">
-                  Postulación enviada correctamente
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={applying}
-                  onClick={() => void handleApply()}
-                >
-                  {applying ? 'Enviando…' : 'Postularme'}
-                </button>
-              )}
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={applying}
+                onClick={() => void handleApply()}
+              >
+                {applying ? 'Enviando…' : 'Postularme'}
+              </button>
             </div>
           </div>
         </dialog>
