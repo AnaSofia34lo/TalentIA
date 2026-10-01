@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -83,6 +84,37 @@ export class CandidatesService {
         summary: profile?.summary ?? '',
       },
     };
+  }
+
+  async applyToVacancy(candidateId: string, vacancyId: string) {
+    await this.getCandidate(candidateId);
+
+    const vacancy = await this.prisma.vacancy.findFirst({
+      where: { id: vacancyId, status: 'published' },
+      select: { id: true, organizationId: true },
+    });
+    if (!vacancy) {
+      throw new NotFoundException('La vacante no está disponible para postulación.');
+    }
+
+    const existingApplication = await this.prisma.candidateApplication.findUnique({
+      where: { candidateId_vacancyId: { candidateId, vacancyId } },
+      select: { id: true },
+    });
+    if (existingApplication) {
+      throw new ConflictException('Ya te postulaste a esta vacante.');
+    }
+
+    const application = await this.prisma.candidateApplication.create({
+      data: {
+        candidateId,
+        vacancyId: vacancy.id,
+        organizationId: vacancy.organizationId,
+      },
+      select: { id: true, vacancyId: true, status: true, submittedAt: true },
+    });
+
+    return application;
   }
 
   async updateCv(userId: string, dto: UpdateCandidateCvDto) {

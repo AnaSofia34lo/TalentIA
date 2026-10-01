@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   MaxFileSizeValidator,
+  Param,
   ParseFilePipe,
   Patch,
   Post,
@@ -56,6 +57,18 @@ export class CandidatesController {
   @ApiResponse({ status: 401, description: 'JWT ausente, inválido o expirado' })
   getCv(@CurrentUser('id') userId: string) {
     return this.candidates.getCv(userId);
+  }
+
+  @Post('applications/:vacancyId')
+  @ApiOperation({ summary: 'Postula al candidato a una vacante publicada' })
+  @ApiResponse({ status: 201, description: 'Postulación creada correctamente' })
+  @ApiResponse({ status: 404, description: 'La vacante no está publicada' })
+  @ApiResponse({ status: 409, description: 'El candidato ya se postuló a la vacante' })
+  applyToVacancy(
+    @CurrentUser('id') userId: string,
+    @Param('vacancyId') vacancyId: string,
+  ) {
+    return this.candidates.applyToVacancy(userId, vacancyId);
   }
 
   @Patch('cv')
