@@ -12,6 +12,7 @@ import { useAuth } from "../../../shared/context/AuthContext";
 
 type ApplicationItem = {
   id: string;
+  vacancyId: string;
   status: string;
   submittedAt: string;
   vacancy: {
@@ -142,7 +143,7 @@ export default function CandidatoInicioPage() {
                 </div>
               </div>
             </div>
-            <Link href="/candidato/postulaciones/entrevista" className="btn btn-accent btn-sm">
+            <Link href={`/candidato/postulaciones/entrevista?vacancyId=${encodeURIComponent(application.vacancyId)}&vacancy=${encodeURIComponent(application.vacancy.title)}`} className="btn btn-accent btn-sm">
               Iniciar
               <ArrowRightIcon size={14} />
             </Link>

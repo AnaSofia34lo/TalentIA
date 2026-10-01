@@ -18,6 +18,7 @@ export class PrismaVacancyRepository implements VacancyRepositoryPort {
         title: data.name,
         description: data.description,
         salary: data.salary,
+        requirements: data.requirements,
         createdByUserId: data.createdByUserId,
         organizationId: data.organizationId,
         slug: data.slug,
@@ -38,6 +39,9 @@ export class PrismaVacancyRepository implements VacancyRepositoryPort {
                 .map((name) => ({ name, weight: 1 })),
             }
           : undefined,
+        interviewQuestions: {
+          create: data.interviewQuestions,
+        },
       },
     });
 
@@ -58,6 +62,7 @@ export class PrismaVacancyRepository implements VacancyRepositoryPort {
           title: data.name,
           description: data.description,
           salary: data.salary,
+          requirements: data.requirements,
           status: data.status,
           publishedAt: data.status === 'published' ? new Date() : null,
         },
@@ -71,6 +76,17 @@ export class PrismaVacancyRepository implements VacancyRepositoryPort {
           .map((name) => ({ vacancyId: data.id, name, weight: 1 }));
         if (skills.length) await transaction.vacancySkill.createMany({ data: skills });
       }
+      if (data.interviewQuestions !== undefined) {
+        await transaction.vacancyInterviewQuestion.deleteMany({ where: { vacancyId: data.id } });
+        await transaction.vacancyInterviewQuestion.createMany({
+          data: data.interviewQuestions.map((question) => ({
+            vacancyId: data.id,
+            category: question.category,
+            prompt: question.prompt,
+            sortOrder: question.sortOrder,
+          })),
+        });
+      }
       return updated;
     });
     return this.toEntity(row);
@@ -80,6 +96,7 @@ export class PrismaVacancyRepository implements VacancyRepositoryPort {
     const rows = await this.prisma.vacancy.findMany({
       where: { createdByUserId: recruiterId },
       orderBy: { createdAt: 'desc' },
+      include: { interviewQuestions: { orderBy: { sortOrder: 'asc' } } },
     });
     return rows.map((row) => this.toEntity(row));
   }
@@ -128,20 +145,24 @@ export class PrismaVacancyRepository implements VacancyRepositoryPort {
     title: string;
     description: string;
     salary: number;
+    requirements?: string | null;
     createdByUserId: string;
     organizationId: string;
     slug: string;
     status: string;
+    interviewQuestions?: Array<{ category: string; prompt: string; sortOrder: number }>;
   }): Vacancy {
     return new Vacancy({
       id: row.id,
       name: row.title,
       description: row.description,
       salary: row.salary,
+      requirements: row.requirements ?? undefined,
       createdByUserId: row.createdByUserId,
       organizationId: row.organizationId,
       slug: row.slug,
       status: row.status,
+      interviewQuestions: row.interviewQuestions,
     });
   }
 }

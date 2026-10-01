@@ -154,6 +154,7 @@ model Vacancy {
 
   requirementsList VacancyRequirement[]
   skills           VacancySkill[]
+  interviewQuestions VacancyInterviewQuestion[]
   applications     CandidateApplication[]
   interviews       Interview[]
 
@@ -180,6 +181,20 @@ model VacancySkill {
   weight      Int      @default(1)
 
   @@map("vacancy_skills")
+}
+
+model VacancyInterviewQuestion {
+  id        String   @id @default(uuid())
+  vacancyId String
+  vacancy   Vacancy  @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  category  String
+  prompt    String
+  sortOrder Int
+  createdAt DateTime @default(now())
+
+  @@unique([vacancyId, sortOrder])
+  @@index([vacancyId, category])
+  @@map("vacancy_interview_questions")
 }
 
 model CandidateApplication {

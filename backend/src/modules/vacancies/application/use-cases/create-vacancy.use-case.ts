@@ -35,6 +35,7 @@ export class CreateVacancyUseCase {
         name: dto.name,
         description: dto.description,
         salary: dto.salary,
+        requirements: dto.requirements,
         createdByUserId: recruiterId,
         organizationId,
       });
@@ -55,6 +56,8 @@ export class CreateVacancyUseCase {
       slug,
       status: 'published',
       technicalSkills: dto.technicalSkills,
+      requirements: dto.requirements,
+      interviewQuestions: dto.interviewQuestions,
     });
   }
 

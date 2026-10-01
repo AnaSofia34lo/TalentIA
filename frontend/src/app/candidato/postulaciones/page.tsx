@@ -73,7 +73,7 @@ export default function CandidatoPostulacionesPage() {
   const applicationAction = (application: ApplicationItem) => {
     if (application.status === 'pending' || application.status === 'interview_scheduled') {
       return (
-        <Link href="/candidato/postulaciones/entrevista" className={`${actionButtonClass} btn-accent`}>
+        <Link href={`/candidato/postulaciones/entrevista?vacancyId=${encodeURIComponent(application.vacancyId)}&vacancy=${encodeURIComponent(application.vacancy.title)}`} className={`${actionButtonClass} btn-accent`}>
           Iniciar
           <ArrowRightIcon size={14} />
         </Link>

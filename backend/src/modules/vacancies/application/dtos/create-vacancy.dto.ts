@@ -1,15 +1,36 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsInt,
   IsNotEmpty,
+  IsIn,
   IsOptional,
   IsString,
   Min,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class InterviewQuestionDto {
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['technical', 'behavioral'])
+  category: 'technical' | 'behavioral';
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(10)
+  @MaxLength(2000)
+  prompt: string;
+
+  @IsInt()
+  @Min(0)
+  sortOrder: number;
+}
 
 export class CreateVacancyDto {
   @ApiProperty({
@@ -51,6 +72,15 @@ export class CreateVacancyDto {
   salary: number;
 
   @ApiProperty({
+    description: 'Casos de uso que se evaluarán en la entrevista técnica.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  requirements?: string;
+
+  @ApiProperty({
     example: ['Java', 'Python', 'NestJS'],
     description: 'Habilidades técnicas usadas para calcular Match IA (HU-08).',
     required: false,
@@ -62,4 +92,17 @@ export class CreateVacancyDto {
   @IsString({ each: true })
   @MaxLength(120, { each: true })
   technicalSkills?: string[];
+
+  @ApiProperty({
+    description: 'Las 20 preguntas generadas por IA: 10 técnicas y 10 de habilidades blandas.',
+    type: [InterviewQuestionDto],
+    minItems: 20,
+    maxItems: 20,
+  })
+  @IsArray()
+  @ArrayMinSize(20)
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => InterviewQuestionDto)
+  interviewQuestions: InterviewQuestionDto[];
 }
