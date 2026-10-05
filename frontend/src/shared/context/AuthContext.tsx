@@ -50,10 +50,35 @@ interface AuthContextType {
   updateCandidateProfile: (data: Record<string, unknown>) => Promise<CandidateProfileResponse>;
   updateCandidateCv: (data: Record<string, unknown>) => Promise<CandidateProfileResponse>;
   uploadCandidateCv: (file: File) => Promise<{ fileName: string; downloadUrl: string | null }>;
-  createVacancy: (data: { name: string; description: string; salary: number; technicalSkills?: string[] }) => Promise<{ id: string; name: string; description: string; salary: number }>;
-  updateVacancy: (vacancyId: string, data: { name: string; description: string; salary: number; status: string; technicalSkills?: string[] }) => Promise<{ id: string; name: string; description: string; salary: number; status: string }>;
-  listVacancies: () => Promise<Array<{ id: string; name: string; description: string; salary: number; status: string }>>;
+  createVacancy: (data: { name: string; description: string; salary: number; requirements?: string; technicalSkills?: string[]; interviewQuestions: Array<{ category: 'technical' | 'behavioral'; prompt: string; sortOrder: number }> }) => Promise<{ id: string; name: string; description: string; salary: number }>;
+  generateInterviewQuestions: (data: { name: string; description: string; salary: number; technicalSkills?: string[]; softSkills?: string[]; area?: string; level?: string; modality?: string; useCases?: string }) => Promise<Array<{ category: 'technical' | 'behavioral'; prompt: string; sortOrder: number }>>;
+  updateVacancy: (vacancyId: string, data: { name: string; description: string; salary: number; requirements?: string; status: string; technicalSkills?: string[]; interviewQuestions?: Array<{ category: 'technical' | 'behavioral'; prompt: string; sortOrder: number }> }) => Promise<{ id: string; name: string; description: string; salary: number; status: string }>;
+  listVacancies: () => Promise<Array<{ id: string; name: string; description: string; salary: number; requirements?: string; status: string; interviewQuestions?: Array<{ category: 'technical' | 'behavioral'; prompt: string; sortOrder: number }> }>>;
   listAvailableVacancies: () => Promise<Array<{ id: string; name: string; description: string; salary: number; status: string }>>;
+  applyToVacancy: (vacancyId: string) => Promise<{ id: string; vacancyId: string; status: string; submittedAt: string }>;
+  listCandidateApplications: () => Promise<Array<{
+    id: string;
+    vacancyId: string;
+    status: string;
+    submittedAt: string;
+    vacancy: { title: string; description: string; salary: number; status: string; organization: { name: string } };
+  }>>;
+  startTechnicalInterview: (vacancyId: string) => Promise<{
+    interviewId: string;
+    status: string;
+    vacancy: { title: string; organization: string };
+    questions: Array<{ id: string; category: string; prompt: string; answer: string | null }>;
+  }>;
+  startBehavioralInterview: (vacancyId: string) => Promise<{
+    interviewId: string;
+    status: string;
+    vacancy: { title: string; organization: string };
+    questions: Array<{ id: string; category: string; prompt: string; answer: string | null }>;
+  }>;
+  submitTechnicalAnswer: (interviewId: string, questionId: string, responseText: string) => Promise<{ id: string; questionId: string; responseText: string | null }>;
+  markVideoQuestion: (interviewId: string, questionId: string, timestampMs: number) => Promise<{ id: string; questionId: string; timestampMs: number }>;
+  completeTechnicalInterview: (interviewId: string) => Promise<{ interviewId: string; status: string }>;
+  uploadInterviewVideo: (interviewId: string, video: Blob) => Promise<{ interviewId: string; videoUrl: string }>;
   getVacancyMatch: (vacancyId: string) => Promise<{ matchPercentage: number; evaluatedSkills: number }>;
   logout: () => Promise<void>;
   markAllNotifsRead: () => void;
@@ -209,11 +234,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await applySession(auth);
   };
 
-  const createVacancy = async (data: { name: string; description: string; salary: number; technicalSkills?: string[] }) => {
+  const createVacancy = async (data: { name: string; description: string; salary: number; requirements?: string; technicalSkills?: string[]; interviewQuestions: Array<{ category: 'technical' | 'behavioral'; prompt: string; sortOrder: number }> }) => {
     return requestApi('vacancies', { method: 'POST', body: JSON.stringify(data) });
   };
 
-  const updateVacancy = async (vacancyId: string, data: { name: string; description: string; salary: number; status: string; technicalSkills?: string[] }) => {
+  const generateInterviewQuestions = async (data: { name: string; description: string; salary: number; technicalSkills?: string[]; softSkills?: string[]; area?: string; level?: string; modality?: string; useCases?: string }) => {
+    return requestApi('vacancies/generate-interview-questions', { method: 'POST', body: JSON.stringify(data) });
+  };
+
+  const updateVacancy = async (vacancyId: string, data: { name: string; description: string; salary: number; requirements?: string; status: string; technicalSkills?: string[]; interviewQuestions?: Array<{ category: 'technical' | 'behavioral'; prompt: string; sortOrder: number }> }) => {
     return requestApi(`vacancies/${vacancyId}`, { method: 'PATCH', body: JSON.stringify(data) });
   };
 
@@ -223,6 +252,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const listAvailableVacancies = async () => {
     return requestApi('vacancies/available');
+  };
+
+  const applyToVacancy = async (vacancyId: string) => {
+    return requestApi(`candidate/applications/${vacancyId}`, { method: 'POST' });
+  };
+
+  const listCandidateApplications = async () => {
+    return requestCandidate('applications');
+  };
+
+  const startTechnicalInterview = async (vacancyId: string) => {
+    return requestApi('candidate/interviews/technical/start', {
+      method: 'POST',
+      body: JSON.stringify({ vacancyId }),
+    });
+  };
+
+  const startBehavioralInterview = async (vacancyId: string) => {
+    return requestApi('candidate/interviews/behavioral/start', {
+      method: 'POST',
+      body: JSON.stringify({ vacancyId }),
+    });
+  };
+
+  const submitTechnicalAnswer = async (interviewId: string, questionId: string, responseText: string) => {
+    return requestApi(`candidate/interviews/${interviewId}/answers`, {
+      method: 'POST',
+      body: JSON.stringify({ questionId, responseText }),
+    });
+  };
+
+  const markVideoQuestion = async (interviewId: string, questionId: string, timestampMs: number) => {
+    return requestApi(`candidate/interviews/${interviewId}/video-markers`, {
+      method: 'POST',
+      body: JSON.stringify({ questionId, timestampMs }),
+    });
+  };
+
+  const completeTechnicalInterview = async (interviewId: string) => {
+    return requestApi(`candidate/interviews/${interviewId}/complete`, { method: 'PATCH' });
+  };
+
+  const uploadInterviewVideo = async (interviewId: string, video: Blob) => {
+    const formData = new FormData();
+    formData.append('video', video, `entrevista-${interviewId}.webm`);
+    return requestApi(`candidate/interviews/${interviewId}/video`, { method: 'POST', body: formData });
   };
 
   const getVacancyMatch = async (vacancyId: string) => {
@@ -271,7 +346,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else setCandNotifs((previous) => previous.map((notification) => ({ ...notification, unread: false })));
   };
 
-  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, updateVacancy, listVacancies, listAvailableVacancies, getVacancyMatch, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, generateInterviewQuestions, updateVacancy, listVacancies, listAvailableVacancies, applyToVacancy, listCandidateApplications, startTechnicalInterview, startBehavioralInterview, submitTechnicalAnswer, markVideoQuestion, completeTechnicalInterview, uploadInterviewVideo, getVacancyMatch, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

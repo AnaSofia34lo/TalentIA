@@ -3,10 +3,16 @@ export type VacancyProps = {
   name: string;
   description: string;
   salary: number;
+  requirements?: string;
   createdByUserId: string;
   organizationId: string;
   slug?: string;
   status?: string;
+  interviewQuestions?: Array<{
+    category: string;
+    prompt: string;
+    sortOrder: number;
+  }>;
 };
 
 export class Vacancy {
@@ -14,10 +20,16 @@ export class Vacancy {
   readonly name: string;
   readonly description: string;
   readonly salary: number;
+  readonly requirements?: string;
   readonly createdByUserId: string;
   readonly organizationId: string;
   readonly slug?: string;
   readonly status?: string;
+  readonly interviewQuestions: Array<{
+    category: string;
+    prompt: string;
+    sortOrder: number;
+  }>;
 
   constructor(props: VacancyProps) {
     const name = props.name.trim();
@@ -39,9 +51,11 @@ export class Vacancy {
     this.name = name;
     this.description = description;
     this.salary = props.salary;
+    this.requirements = props.requirements;
     this.createdByUserId = props.createdByUserId;
     this.organizationId = props.organizationId;
     this.slug = props.slug;
     this.status = props.status;
+    this.interviewQuestions = props.interviewQuestions ?? [];
   }
 }

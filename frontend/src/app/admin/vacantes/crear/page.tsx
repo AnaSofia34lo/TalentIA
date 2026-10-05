@@ -6,11 +6,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeftIcon, LogoSparkIcon, CheckIcon } from '../../../../shared/components/ui/Icons';
 import { useAuth } from '../../../../shared/context/AuthContext';
 
+type GeneratedQuestion = {
+  category: 'technical' | 'behavioral';
+  prompt: string;
+  sortOrder: number;
+};
+
 export default function CrearVacantePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editingId = searchParams.get('edit');
-  const { createVacancy, updateVacancy, listVacancies } = useAuth();
+  const { createVacancy, generateInterviewQuestions, updateVacancy, listVacancies } = useAuth();
   const [name, setName] = useState('Desarrollador de Software (Java & Python)');
   const [description, setDescription] = useState(
     'Buscamos una persona con dominio de Java y Python que participe activamente en el levantamiento de requisitos: que sepa entender lo que se le pide, delimitar el alcance real y ejecutarlo. Evaluamos aptitud demostrada, no solo experiencia listada en el CV.',
@@ -30,6 +36,11 @@ export default function CrearVacantePage() {
   ]);
   const [techInput, setTechInput] = useState('');
   const [softInput, setSoftInput] = useState('');
+  const [area, setArea] = useState('Tecnología · DS4B');
+  const [level, setLevel] = useState('Senior');
+  const [modality, setModality] = useState('Híbrido');
+  const [useCases, setUseCases] = useState('');
+  const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([]);
   const [aiGenerated, setAiGenerated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -46,6 +57,10 @@ export default function CrearVacantePage() {
         setDescription(vacancy.description);
         setSalary(String(vacancy.salary));
         setStatus(vacancy.status);
+        setUseCases(vacancy.requirements ?? '');
+        const savedQuestions = vacancy.interviewQuestions ?? [];
+        setGeneratedQuestions(savedQuestions.map(({ category, prompt, sortOrder }) => ({ category, prompt, sortOrder })));
+        setAiGenerated(savedQuestions.length === 20);
       } catch (requestError) {
         setError(requestError instanceof Error ? requestError.message : 'No fue posible cargar la vacante.');
       }
@@ -82,12 +97,48 @@ export default function CrearVacantePage() {
     setSoftSkills(softSkills.filter((s) => s !== skill));
   };
 
-  const handleGenerateAI = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
+  const handleGenerateAI = async () => {
+    setError('');
+    const trimmedName = name.trim();
+    const trimmedDescription = description.trim();
+    const salaryAmount = Number(salary);
+
+    if (trimmedName.length < 3 || trimmedDescription.length < 20 || !Number.isInteger(salaryAmount) || salaryAmount < 0) {
+      setError('Completa cargo, descripción y salario antes de generar las preguntas.');
+      return;
+    }
+    if (techSkills.length === 0 || softSkills.length === 0) {
+      setError('Agrega al menos una competencia técnica y una competencia blanda antes de generar.');
+      return;
+    }
+    if (!useCases.trim()) {
+      setError('Describe los casos de uso a evaluar antes de generar las preguntas.');
+      return;
+    }
+
+    try {
+      setIsGenerating(true);
+      const questions = await generateInterviewQuestions({
+        name: trimmedName,
+        description: trimmedDescription,
+        salary: salaryAmount,
+        technicalSkills: techSkills,
+        softSkills,
+        area,
+        level,
+        modality,
+        useCases,
+      });
+      if (questions.length !== 20) throw new Error('La IA no generó las 20 preguntas requeridas.');
+      setGeneratedQuestions(questions);
       setAiGenerated(true);
-    }, 600);
+    } catch (requestError) {
+      setAiGenerated(false);
+      setGeneratedQuestions([]);
+      setError(requestError instanceof Error ? requestError.message : 'No fue posible generar las preguntas.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handlePublish = async () => {
@@ -108,6 +159,10 @@ export default function CrearVacantePage() {
       setError('Ingresa un salario mensual válido en pesos colombianos.');
       return;
     }
+    if (!editingId && (!aiGenerated || generatedQuestions.length !== 20)) {
+      setError('Debes generar y revisar las 20 preguntas con IA antes de publicar la vacante.');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -115,6 +170,8 @@ export default function CrearVacantePage() {
         name: trimmedName,
         description: trimmedDescription,
         salary: salaryAmount,
+        requirements: useCases.trim(),
+        interviewQuestions: generatedQuestions,
       };
       if (editingId) {
         await updateVacancy(editingId, { ...data, status });
@@ -171,12 +228,13 @@ export default function CrearVacantePage() {
                 <input
                   className="input"
                   placeholder="Ej. Tecnología"
-                  defaultValue="Tecnología · DS4B"
+                    value={area}
+                    onChange={(event) => setArea(event.target.value)}
                 />
               </div>
               <div className="field">
                 <label>Nivel</label>
-                <select className="input" defaultValue="Senior">
+                  <select className="input" value={level} onChange={(event) => setLevel(event.target.value)}>
                   <option>Junior</option>
                   <option>Semi-senior</option>
                   <option>Senior</option>
@@ -185,7 +243,7 @@ export default function CrearVacantePage() {
               </div>
               <div className="field">
                 <label>Modalidad</label>
-                <select className="input" defaultValue="Híbrido">
+                  <select className="input" value={modality} onChange={(event) => setModality(event.target.value)}>
                   <option>Remoto</option>
                   <option>Híbrido</option>
                   <option>Presencial</option>
@@ -270,7 +328,9 @@ export default function CrearVacantePage() {
               <textarea
                 className="input"
                 rows={3}
-                defaultValue="Delimitar el alcance de un requerimiento ambiguo del cliente; identificar qué preguntas hacer antes de programar; resolver un cuello de botella técnico ya en ejecución."
+                value={useCases}
+                onChange={(event) => setUseCases(event.target.value)}
+                placeholder="Describe los casos de uso que quieres evaluar..."
               />
             </div>
           </div>
@@ -299,13 +359,17 @@ export default function CrearVacantePage() {
               disabled={isGenerating}
             >
               <LogoSparkIcon size={16} />
-              {isGenerating ? 'Generando preguntas…' : 'Generar entrevista con IA'}
+              {isGenerating
+                ? 'Generando preguntas…'
+                : editingId
+                  ? 'Volver a generar preguntas con IA'
+                  : 'Generar entrevista con IA'}
             </button>
 
             {aiGenerated && (
               <div className="mt-3.5 text-left text-xs bg-[var(--green-tint)] text-[var(--green)] p-2.5 px-3 rounded-xl flex items-center gap-2 font-medium">
                 <CheckIcon size={16} />
-                12 preguntas generadas correctamente
+                20 preguntas generadas correctamente
               </div>
             )}
           </div>
@@ -315,28 +379,18 @@ export default function CrearVacantePage() {
               <h3 className="text-sm font-bold mb-3">
                 Preguntas generadas{' '}
                 <span className="text-[var(--ink-faint)] font-normal text-xs">
-                  (editables)
+                  (solo lectura)
                 </span>
               </h3>
-              <div className="flex flex-col gap-2.5 text-xs">
-                <div className="p-2.5 px-3 bg-[var(--bg)] rounded-xl">
-                  <span className="badge badge-navy mb-1.5 inline-block">Técnica</span>
-                  <p className="text-[var(--ink)]">
-                    ¿Cómo diseñarías una API REST para soportar 10x el tráfico actual?
-                  </p>
-                </div>
-                <div className="p-2.5 px-3 bg-[var(--bg)] rounded-xl">
-                  <span className="badge badge-purple mb-1.5 inline-block">Comportamental</span>
-                  <p className="text-[var(--ink)]">
-                    Cuéntame de una vez que tuviste que dar una noticia difícil a tu equipo.
-                  </p>
-                </div>
-                <div className="p-2.5 px-3 bg-[var(--bg)] rounded-xl">
-                  <span className="badge badge-amber mb-1.5 inline-block">Caso práctico</span>
-                  <p className="text-[var(--ink)]">
-                    Un servicio crítico empieza a fallar en producción. ¿Cuáles son tus primeros 3 pasos?
-                  </p>
-                </div>
+              <div className="flex flex-col gap-2.5 text-xs max-h-[520px] overflow-y-auto">
+                {generatedQuestions.map((question, index) => (
+                  <div className="p-2.5 px-3 bg-[var(--bg)] rounded-xl" key={`${question.category}-${question.sortOrder}`}>
+                    <span className={`badge ${question.category === 'technical' ? 'badge-navy' : 'badge-purple'} mb-1.5 inline-block`}>
+                      {question.category === 'technical' ? 'Técnica' : 'Habilidades blandas'} · {index + 1}
+                    </span>
+                    <p className="text-[var(--ink)]">{question.prompt}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}

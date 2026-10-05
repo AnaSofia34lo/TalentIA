@@ -15,6 +15,8 @@ import { UpdateVacancyUseCase } from '../../application/use-cases/update-vacancy
 import { ListRecruiterVacanciesUseCase } from '../../application/use-cases/list-recruiter-vacancies.use-case.js';
 import { ListPublishedVacanciesUseCase } from '../../application/use-cases/list-published-vacancies.use-case.js';
 import { CalculateVacancyMatchUseCase } from '../../application/use-cases/calculate-vacancy-match.use-case.js';
+import { GenerateInterviewQuestionsUseCase } from '../../application/use-cases/generate-interview-questions.use-case.js';
+import { GenerateInterviewQuestionsDto } from '../../application/dtos/generate-interview-questions.dto.js';
 import type { Vacancy } from '../../domain/entities/vacancy.entity.js';
 
 @ApiTags('Vacantes')
@@ -27,6 +29,7 @@ export class VacanciesController {
     private readonly listRecruiterVacancies: ListRecruiterVacanciesUseCase,
     private readonly listPublishedVacancies: ListPublishedVacanciesUseCase,
     private readonly calculateVacancyMatch: CalculateVacancyMatchUseCase,
+    private readonly generateInterviewQuestions: GenerateInterviewQuestionsUseCase,
   ) {}
 
   @Get('available')
@@ -96,6 +99,14 @@ export class VacanciesController {
     return this.serialize(vacancy);
   }
 
+  @Post('generate-interview-questions')
+  @Roles('recruiter')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Genera 10 preguntas técnicas y 10 de habilidades blandas con IA' })
+  async generateQuestions(@Body() dto: GenerateInterviewQuestionsDto) {
+    return this.generateInterviewQuestions.execute(dto);
+  }
+
   @Patch(':vacancyId')
   @Roles('recruiter')
   @ApiOperation({ summary: 'Edita una vacante y cambia su estado' })
@@ -115,10 +126,12 @@ export class VacanciesController {
       name: vacancy.name,
       description: vacancy.description,
       salary: vacancy.salary,
+      requirements: vacancy.requirements,
       slug: vacancy.slug,
       status: vacancy.status,
       organizationId: vacancy.organizationId,
       createdByUserId: vacancy.createdByUserId,
+      interviewQuestions: vacancy.interviewQuestions,
     };
   }
 }

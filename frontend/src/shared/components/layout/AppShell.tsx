@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isNavActive = (path: string) => {
     if (path === '/admin/vacantes' && pathname.startsWith('/admin/vacantes')) return true;
     if (path === '/admin/banco' && pathname.startsWith('/admin/candidatos')) return true;
-    if (path === '/candidato/entrevistas' && pathname.startsWith('/candidato/entrevistas')) return true;
+    if (path === '/candidato/postulaciones' && pathname.startsWith('/candidato/postulaciones')) return true;
     return pathname === path;
   };
 
@@ -168,11 +168,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span>Mi hoja de vida</span>
             </Link>
             <Link
-              href="/candidato/entrevistas"
-              className={`nav-item ${isNavActive('/candidato/entrevistas') ? 'active' : ''}`}
+              href="/candidato/postulaciones"
+              className={`nav-item ${isNavActive('/candidato/postulaciones') ? 'active' : ''}`}
             >
               <VideoIcon size={18} />
-              <span>Mis entrevistas</span>
+              <span>Mis postulaciones</span>
             </Link>
             <Link
               href="/candidato/resultados"

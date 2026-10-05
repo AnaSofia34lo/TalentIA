@@ -2,15 +2,23 @@ import type { Vacancy } from '../../domain/entities/vacancy.entity.js';
 
 export const VACANCY_REPOSITORY = Symbol('VACANCY_REPOSITORY');
 
+export type VacancyInterviewQuestionPersistence = {
+  category: 'technical' | 'behavioral';
+  prompt: string;
+  sortOrder: number;
+};
+
 export type CreateVacancyPersistence = {
   name: string;
   description: string;
   salary: number;
+  requirements?: string;
   createdByUserId: string;
   organizationId: string;
   slug: string;
   status?: 'draft' | 'published' | 'paused' | 'closed';
   technicalSkills?: string[];
+  interviewQuestions: VacancyInterviewQuestionPersistence[];
 };
 
 export type UpdateVacancyPersistence = {
@@ -19,8 +27,10 @@ export type UpdateVacancyPersistence = {
   name: string;
   description: string;
   salary: number;
+  requirements?: string;
   status: 'draft' | 'published' | 'paused' | 'closed';
   technicalSkills?: string[];
+  interviewQuestions?: VacancyInterviewQuestionPersistence[];
 };
 
 export interface VacancyRepositoryPort {
