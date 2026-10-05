@@ -218,9 +218,34 @@ model CandidateApplication {
 
   interviews       Interview[]
   evaluations      Evaluation[]
+  interviewAnalysis InterviewAnalysis?
 
   @@unique([candidateId, vacancyId])
   @@map("candidate_applications")
+}
+
+model InterviewAnalysis {
+  id                    String               @id @default(uuid())
+  applicationId         String               @unique
+  application           CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  technicalInterviewId  String?
+  behavioralInterviewId String?
+  status                String               @default("pending")
+  technicalScore        Float?
+  behavioralScore       Float?
+  overallScore          Float?
+  technicalSummary      String?
+  behavioralSummary     String?
+  strengths             Json?
+  improvements          Json?
+  recommendation        String?
+  failureReason         String?
+  analyzedAt            DateTime?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([status])
+  @@map("interview_analyses")
 }
 
 model Interview {

@@ -124,6 +124,15 @@ entre `draft`, `published`, `paused` y `closed`. El cambio se envía mediante
 `PATCH /vacancies/:vacancyId`. Los candidatos solo reciben las vacantes publicadas en
 `/candidato/vacantes`.
 
+## HU-32: Análisis de entrevistas mediante IA
+
+Al finalizar la entrevista en video, el backend inicia el análisis combinado de las
+respuestas técnicas y de habilidades blandas. La pantalla `/candidato/resultados`
+consulta `GET /candidate/interview-analyses` usando el JWT del candidato y muestra el
+estado del análisis, porcentaje general, fortalezas, oportunidades de mejora y la
+recomendación general cuando estén disponibles. Mientras Gemini procesa el resultado,
+la pantalla muestra un estado de espera; no inventa resultados locales.
+
 ## Fuera del alcance actual
 
 La interfaz contiene vistas preparadas para ampliar candidatos, entrevistas y reportes,

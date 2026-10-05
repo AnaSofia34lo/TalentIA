@@ -36,6 +36,22 @@ export interface CandidateProfileResponse {
   };
 }
 
+export interface InterviewAnalysisResponse {
+  id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  technicalScore: number | null;
+  behavioralScore: number | null;
+  overallScore: number | null;
+  technicalSummary: string | null;
+  behavioralSummary: string | null;
+  strengths: string[];
+  improvements: string[];
+  recommendation: string | null;
+  failureReason: string | null;
+  analyzedAt: string | null;
+  application: { id: string; vacancy: { title: string; organization: string } };
+}
+
 interface AuthContextType {
   role: UserRole;
   user: UserProfile;
@@ -79,6 +95,7 @@ interface AuthContextType {
   markVideoQuestion: (interviewId: string, questionId: string, timestampMs: number) => Promise<{ id: string; questionId: string; timestampMs: number }>;
   completeTechnicalInterview: (interviewId: string) => Promise<{ interviewId: string; status: string }>;
   uploadInterviewVideo: (interviewId: string, video: Blob) => Promise<{ interviewId: string; videoUrl: string }>;
+  listInterviewAnalyses: () => Promise<InterviewAnalysisResponse[]>;
   getVacancyMatch: (vacancyId: string) => Promise<{ matchPercentage: number; evaluatedSkills: number }>;
   logout: () => Promise<void>;
   markAllNotifsRead: () => void;
@@ -304,6 +321,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return requestApi(`vacancies/${vacancyId}/match`);
   };
 
+  const listInterviewAnalyses = async () => {
+    return requestApi('candidate/interview-analyses') as Promise<InterviewAnalysisResponse[]>;
+  };
+
   const refreshCandidateProfile = async () => {
     const profile = await requestCandidate('profile');
     setCandidateProfile(profile);
@@ -346,7 +367,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else setCandNotifs((previous) => previous.map((notification) => ({ ...notification, unread: false })));
   };
 
-  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, generateInterviewQuestions, updateVacancy, listVacancies, listAvailableVacancies, applyToVacancy, listCandidateApplications, startTechnicalInterview, startBehavioralInterview, submitTechnicalAnswer, markVideoQuestion, completeTechnicalInterview, uploadInterviewVideo, getVacancyMatch, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ role, user, candidateProfile, notifications: activeNotifs, unreadCount, login, registerCandidate, registerRecruiter, refreshCandidateProfile, refreshCandidateCv, updateCandidateProfile, updateCandidateCv, uploadCandidateCv, createVacancy, generateInterviewQuestions, updateVacancy, listVacancies, listAvailableVacancies, applyToVacancy, listCandidateApplications, startTechnicalInterview, startBehavioralInterview, submitTechnicalAnswer, markVideoQuestion, completeTechnicalInterview, uploadInterviewVideo, getVacancyMatch, listInterviewAnalyses, logout, markAllNotifsRead, bancoFilter, setBancoFilter }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
