@@ -31,10 +31,13 @@ enum VacancyStatus {
 }
 
 enum ApplicationStatus {
+  applied
   pending
   reviewed
   shortlisted
   interview_scheduled
+  completed
+  technical_test
   rejected
   hired
 }
@@ -154,6 +157,7 @@ model Vacancy {
 
   requirementsList VacancyRequirement[]
   skills           VacancySkill[]
+  interviewQuestions VacancyInterviewQuestion[]
   applications     CandidateApplication[]
   interviews       Interview[]
 
@@ -182,6 +186,20 @@ model VacancySkill {
   @@map("vacancy_skills")
 }
 
+model VacancyInterviewQuestion {
+  id        String   @id @default(uuid())
+  vacancyId String
+  vacancy   Vacancy  @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  category  String
+  prompt    String
+  sortOrder Int
+  createdAt DateTime @default(now())
+
+  @@unique([vacancyId, sortOrder])
+  @@index([vacancyId, category])
+  @@map("vacancy_interview_questions")
+}
+
 model CandidateApplication {
   id               String            @id @default(uuid())
   candidateId      String
@@ -190,7 +208,7 @@ model CandidateApplication {
   vacancy          Vacancy           @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
   organizationId   String
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  status           ApplicationStatus @default(pending)
+  status           ApplicationStatus @default(applied)
   matchScore       Float?
   coverLetter      String?
   submittedAt      DateTime          @default(now())
@@ -221,11 +239,13 @@ model Interview {
   startedAt       DateTime?
   completedAt     DateTime?
   summary         String?
+  videoUrl        String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
   questions       InterviewQuestion[]
   answers         InterviewAnswer[]
+  videoMarkers    InterviewVideoMarker[]
   evaluations     Evaluation[]
 
   @@map("interviews")
@@ -241,8 +261,23 @@ model InterviewQuestion {
   createdAt   DateTime @default(now())
 
   answers     InterviewAnswer[]
+  videoMarkers InterviewVideoMarker[]
 
   @@map("interview_questions")
+}
+
+model InterviewVideoMarker {
+  id          String            @id @default(uuid())
+  interviewId String
+  interview   Interview         @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    InterviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  timestampMs Int
+  createdAt   DateTime          @default(now())
+
+  @@unique([interviewId, questionId])
+  @@index([interviewId, timestampMs])
+  @@map("interview_video_markers")
 }
 
 model InterviewAnswer {
