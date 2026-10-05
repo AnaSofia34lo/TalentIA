@@ -33,8 +33,10 @@ export class UpdateVacancyUseCase {
       name: dto.name,
       description: dto.description,
       salary: dto.salary,
+      requirements: dto.requirements,
       status: dto.status ?? 'published',
       technicalSkills: dto.technicalSkills,
+      interviewQuestions: dto.interviewQuestions,
     });
     if (!vacancy) throw new NotFoundException('La vacante no existe o no pertenece al reclutador.');
     return vacancy;

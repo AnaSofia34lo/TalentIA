@@ -34,6 +34,7 @@ export default function AdminVacantesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState('published');
 
   useEffect(() => {
     let active = true;
@@ -80,6 +81,107 @@ export default function AdminVacantesPage() {
     }
   };
 
+  const filteredVacancies = statusFilter === 'all'
+    ? vacancies
+    : vacancies.filter((vacancy) => vacancy.status === statusFilter);
+
+  let vacanciesContent: React.ReactNode;
+  if (loading) {
+    vacanciesContent = <p className="text-sm text-[var(--ink-soft)]">Cargando vacantes…</p>;
+  } else if (vacancies.length === 0) {
+    vacanciesContent = (
+      <div className="card card-pad text-center">
+        <p className="text-sm text-[var(--ink-soft)] mb-4">
+          Aún no has registrado vacantes. Crea la primera con nombre y descripción del cargo.
+        </p>
+        <Link href="/admin/vacantes/crear" className="btn btn-primary">
+          Crear vacante
+        </Link>
+      </div>
+    );
+  } else {
+    vacanciesContent = (
+      <>
+        <div className="flex items-center gap-3 mb-5">
+          <label htmlFor="vacancy-status-filter" className="text-sm font-semibold text-[var(--ink-soft)]">
+            Filtrar por estado
+          </label>
+          <select
+            id="vacancy-status-filter"
+            className="input text-sm py-2 w-full max-w-xs"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="published">Activas</option>
+            <option value="all">Todas</option>
+            <option value="draft">Borradores</option>
+            <option value="paused">En pausa</option>
+            <option value="closed">Cerradas</option>
+          </select>
+        </div>
+
+        {filteredVacancies.length === 0 ? (
+          <div className="card card-pad text-center">
+            <p className="text-sm text-[var(--ink-soft)]">
+              No hay vacantes con el estado seleccionado.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
+            {filteredVacancies.map((vacancy) => (
+              <div
+                key={vacancy.id}
+                className="card card-pad card-hover flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <div
+                      className="kpi-icon"
+                      style={{
+                        background: 'var(--navy-tint)',
+                        color: 'var(--navy)',
+                        width: '40px',
+                        height: '40px',
+                      }}
+                    >
+                      <BriefcaseIcon size={18} />
+                    </div>
+                    <EstadoBadge estado={statusLabel(vacancy.status)} />
+                  </div>
+
+                  <h3 className="text-base font-bold mb-1.5">{vacancy.name}</h3>
+                  <p className="text-sm font-semibold text-[var(--green)] mb-2.5">
+                    {copCurrency.format(vacancy.salary)} mensuales
+                  </p>
+                  <p className="text-[var(--ink-soft)] text-xs mb-3.5 leading-relaxed line-clamp-4">
+                    {vacancy.description}
+                  </p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <select
+                      className="input text-xs py-2 flex-1"
+                      value={vacancy.status}
+                      disabled={updatingId === vacancy.id}
+                      aria-label={`Estado de ${vacancy.name}`}
+                      onChange={(event) => void handleStatusChange(vacancy, event.target.value)}
+                    >
+                      <option value="draft">Borrador</option>
+                      <option value="published">Publicada</option>
+                      <option value="paused">En pausa</option>
+                      <option value="closed">Cerrada</option>
+                    </select>
+                    <Link href={`/admin/vacantes/crear?edit=${vacancy.id}`} className="btn btn-ghost text-xs py-2">
+                      Editar
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <div>
       <div className="page-head">
@@ -101,69 +203,7 @@ export default function AdminVacantesPage() {
         </div>
       )}
 
-      {loading ? (
-        <p className="text-sm text-[var(--ink-soft)]">Cargando vacantes…</p>
-      ) : vacancies.length === 0 ? (
-        <div className="card card-pad text-center">
-          <p className="text-sm text-[var(--ink-soft)] mb-4">
-            Aún no has registrado vacantes. Crea la primera con nombre y descripción del cargo.
-          </p>
-          <Link href="/admin/vacantes/crear" className="btn btn-primary">
-            Crear vacante
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
-          {vacancies.map((vacancy) => (
-            <div
-              key={vacancy.id}
-              className="card card-pad card-hover flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex justify-between items-start mb-3">
-                  <div
-                    className="kpi-icon"
-                    style={{
-                      background: 'var(--navy-tint)',
-                      color: 'var(--navy)',
-                      width: '40px',
-                      height: '40px',
-                    }}
-                  >
-                    <BriefcaseIcon size={18} />
-                  </div>
-                  <EstadoBadge estado={statusLabel(vacancy.status)} />
-                </div>
-
-                <h3 className="text-base font-bold mb-1.5">{vacancy.name}</h3>
-                <p className="text-sm font-semibold text-[var(--green)] mb-2.5">
-                  {copCurrency.format(vacancy.salary)} mensuales
-                </p>
-                <p className="text-[var(--ink-soft)] text-xs mb-3.5 leading-relaxed line-clamp-4">
-                  {vacancy.description}
-                </p>
-                <div className="flex items-center gap-2 mt-3">
-                  <select
-                    className="input text-xs py-2 flex-1"
-                    value={vacancy.status}
-                    disabled={updatingId === vacancy.id}
-                    aria-label={`Estado de ${vacancy.name}`}
-                    onChange={(event) => void handleStatusChange(vacancy, event.target.value)}
-                  >
-                    <option value="draft">Borrador</option>
-                    <option value="published">Publicada</option>
-                    <option value="paused">En pausa</option>
-                    <option value="closed">Cerrada</option>
-                  </select>
-                  <Link href={`/admin/vacantes/crear?edit=${vacancy.id}`} className="btn btn-ghost text-xs py-2">
-                    Editar
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {vacanciesContent}
     </div>
   );
 }

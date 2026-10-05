@@ -9,6 +9,7 @@ import { CandidatesModule } from './modules/candidates/candidates.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ResumeIntelligenceModule } from './modules/resume-intelligence/resume-intelligence.module.js';
 import { VacanciesModule } from './modules/vacancies/vacancies.module.js';
+import { InterviewsModule } from './modules/interviews/interviews.module.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { VacanciesModule } from './modules/vacancies/vacancies.module.js';
     CandidatesModule,
     ResumeIntelligenceModule,
     VacanciesModule,
+    InterviewsModule,
     HealthModule,
   ],
   controllers: [AppController],
