@@ -82,6 +82,14 @@ export class DatabaseBootstrapService implements OnApplicationBootstrap {
           );
           CREATE INDEX IF NOT EXISTS interview_analyses_status_idx ON interview_analyses(status);
         `);
+        await this.prisma.$executeRawUnsafe(`
+          ALTER TABLE candidate_applications
+          ADD COLUMN IF NOT EXISTS "technicalTestEnabled" BOOLEAN NOT NULL DEFAULT false;
+        `);
+        await this.prisma.$executeRawUnsafe(`
+          ALTER TABLE candidate_applications
+          ADD COLUMN IF NOT EXISTS "technicalTestEvaluatedAt" TIMESTAMPTZ;
+        `);
         this.logger.log('✅ Las tablas ya existen en la base de datos.');
         return;
       }

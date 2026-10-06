@@ -43,7 +43,13 @@ export interface CandidateProfileResponse {
 
 export interface InterviewAnalysisResponse {
   id: string;
-  status: "pending" | "processing" | "completed" | "failed" | "not_available";
+  status:
+    | "pending"
+    | "processing"
+    | "completed"
+    | "failed"
+    | "not_available"
+    | "ready_to_analyze";
   technicalScore: number | null;
   behavioralScore: number | null;
   overallScore: number | null;
@@ -54,7 +60,24 @@ export interface InterviewAnalysisResponse {
   recommendation: string | null;
   failureReason: string | null;
   analyzedAt: string | null;
+  interviewsReady?: boolean;
   application: { id: string; vacancy: { title: string; organization: string } };
+}
+
+export interface TechnicalTestAccessResponse {
+  applicationId: string;
+  enabled: boolean;
+  matchPercentage: number | null;
+  threshold: number;
+  status:
+    | "enabled"
+    | "below_threshold"
+    | "analysis_not_ready"
+    | "analysis_failed"
+    | "analysis_in_progress";
+  message: string;
+  vacancyTitle: string;
+  evaluatedAt: string | null;
 }
 
 interface AuthContextType {
@@ -236,6 +259,13 @@ interface AuthContextType {
   getCandidateInterviewAnalysis: (
     applicationId: string,
   ) => Promise<InterviewAnalysisResponse>;
+  runCandidateInterviewAnalysis: (
+    applicationId: string,
+    force?: boolean,
+  ) => Promise<InterviewAnalysisResponse>;
+  getTechnicalTestAccess: (
+    applicationId: string,
+  ) => Promise<TechnicalTestAccessResponse>;
   getVacancyMatch: (
     vacancyId: string,
   ) => Promise<{ matchPercentage: number; evaluatedSkills: number }>;
@@ -251,7 +281,7 @@ interface AuthResponse {
   user: { role: UserRole; email?: string };
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 function initialsFromName(name: string) {
   return name
@@ -581,6 +611,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) as Promise<InterviewAnalysisResponse>;
   };
 
+  const runCandidateInterviewAnalysis = async (
+    applicationId: string,
+    force = true,
+  ) => {
+    return requestApi(
+      `candidate/applications/${applicationId}/interview-analysis`,
+      {
+        method: "POST",
+        body: JSON.stringify({ force }),
+      },
+    ) as Promise<InterviewAnalysisResponse>;
+  };
+
+  const getTechnicalTestAccess = async (applicationId: string) => {
+    return requestApi(
+      `candidate/applications/${applicationId}/technical-test-access`,
+    ) as Promise<TechnicalTestAccessResponse>;
+  };
+
   const refreshCandidateProfile = async () => {
     const profile = await requestCandidate("profile");
     setCandidateProfile(profile);
@@ -667,6 +716,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getVacancyMatch,
         listInterviewAnalyses,
         getCandidateInterviewAnalysis,
+        runCandidateInterviewAnalysis,
+        getTechnicalTestAccess,
         logout,
         markAllNotifsRead,
         bancoFilter,

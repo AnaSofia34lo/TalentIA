@@ -103,6 +103,46 @@ export class InterviewAnalysisController {
     return this.analyses.getCandidateAnalysis(candidateId, applicationId);
   }
 
+  @Post('candidate/applications/:applicationId/interview-analysis')
+  @Roles('candidate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Ejecuta el analisis de IA de las entrevistas propias',
+    description:
+      'Permite al candidato disparar o reintentar el Match IA cuando ya completo la entrevista tecnica y la de habilidades blandas.',
+  })
+  @ApiParam({
+    name: 'applicationId',
+    example: 'c3d58a33-3d9a-4ca6-a49f-6d9ef05edbbd',
+  })
+  @ApiBody({
+    type: RunInterviewAnalysisDto,
+    examples: {
+      normal: { value: { force: false } },
+      rerun: { value: { force: true } },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Analisis finalizado o resultado existente.',
+    schema: { example: analysisExample },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Faltan entrevistas completas o Gemini no pudo analizar.',
+  })
+  runCandidate(
+    @CurrentUser('id') candidateId: string,
+    @Param('applicationId') applicationId: string,
+    @Body() dto: RunInterviewAnalysisDto,
+  ) {
+    return this.analyses.analyzeForCandidate(
+      candidateId,
+      applicationId,
+      dto.force ?? true,
+    );
+  }
+
   @Post('recruiter/applications/:applicationId/interview-analysis')
   @Roles('recruiter')
   @HttpCode(HttpStatus.OK)

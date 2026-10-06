@@ -22,53 +22,135 @@ type CandidateApplication = {
 function statusLabel(status: InterviewAnalysisResponse["status"]) {
   if (status === "completed") return "Compatibilidad disponible";
   if (status === "failed") return "Análisis no completado";
+  if (status === "ready_to_analyze") return "Listo para analizar";
   if (status === "not_available") return "No disponible";
   return "Análisis en proceso";
 }
 
 function statusMessage(status: InterviewAnalysisResponse["status"]) {
   if (status === "failed")
-    return "No fue posible completar el análisis. Puedes consultar nuevamente más tarde.";
+    return "No fue posible completar el análisis. Puedes reintentarlo.";
+  if (status === "ready_to_analyze")
+    return "Ya completaste ambas entrevistas. Calcularemos tu Match IA.";
   if (status === "not_available")
     return "Completa las entrevistas técnica y de habilidades blandas para obtener tu porcentaje.";
-  return "La IA está preparando el resultado de tus entrevistas. Vuelve a consultar esta pantalla en unos momentos.";
+  return "La IA está preparando el resultado de tus entrevistas. Esta pantalla se actualizará sola.";
 }
 
 export default function CandidatoResultadosPage() {
-  const { listCandidateApplications, getCandidateInterviewAnalysis } =
-    useAuth();
+  const {
+    listCandidateApplications,
+    getCandidateInterviewAnalysis,
+    runCandidateInterviewAnalysis,
+  } = useAuth();
   const [results, setResults] = useState<InterviewAnalysisResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [pageError, setPageError] = useState("");
+
+  const loadResults = async () => {
+    const applications = (await listCandidateApplications()) as CandidateApplication[];
+    const items = await Promise.all(
+      applications.map((application) =>
+        getCandidateInterviewAnalysis(application.id),
+      ),
+    );
+    return items;
+  };
 
   useEffect(() => {
     let active = true;
-    void listCandidateApplications()
-      .then(async (applications) => {
-        const items = await Promise.all(
-          (applications as CandidateApplication[]).map((application) =>
-            getCandidateInterviewAnalysis(application.id),
-          ),
+    void loadResults()
+      .then(async (items) => {
+        if (!active) return;
+        setResults(items);
+
+        const pending = items.filter(
+          (item) =>
+            item.status === "ready_to_analyze" || item.status === "failed",
         );
-        if (active) setResults(items);
+        const nextErrors: Record<string, string> = {};
+
+        for (const item of pending) {
+          if (!active) return;
+          try {
+            setAnalyzingId(item.application.id);
+            await runCandidateInterviewAnalysis(item.application.id, true);
+          } catch (requestError) {
+            nextErrors[item.application.id] =
+              requestError instanceof Error
+                ? requestError.message
+                : "No fue posible calcular el Match IA.";
+          }
+        }
+
+        if (!active) return;
+        setCardErrors(nextErrors);
+        const refreshed = await loadResults();
+        if (active) setResults(refreshed);
       })
       .catch((requestError) => {
         if (active)
-          setError(
+          setPageError(
             requestError instanceof Error
               ? requestError.message
               : "No fue posible consultar el análisis.",
           );
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) {
+          setAnalyzingId(null);
+          setLoading(false);
+        }
       });
+
     return () => {
       active = false;
     };
-    // Las funciones del contexto se crean junto con el proveedor; esta vista carga una vez al entrar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const hasProcessing = results.some(
+      (item) => item.status === "processing" || item.status === "pending",
+    );
+    if (!hasProcessing) return;
+
+    const timer = setInterval(() => {
+      void loadResults()
+        .then(setResults)
+        .catch(() => undefined);
+    }, 4000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results]);
+
+  const handleRetry = async (applicationId: string) => {
+    setPageError("");
+    setCardErrors((previous) => {
+      const next = { ...previous };
+      delete next[applicationId];
+      return next;
+    });
+    setAnalyzingId(applicationId);
+    try {
+      await runCandidateInterviewAnalysis(applicationId, true);
+      const refreshed = await loadResults();
+      setResults(refreshed);
+    } catch (requestError) {
+      setCardErrors((previous) => ({
+        ...previous,
+        [applicationId]:
+          requestError instanceof Error
+            ? requestError.message
+            : "No fue posible calcular el Match IA.",
+      }));
+    } finally {
+      setAnalyzingId(null);
+    }
+  };
 
   return (
     <div>
@@ -81,12 +163,12 @@ export default function CandidatoResultadosPage() {
         </div>
       </div>
 
-      {error && (
+      {pageError && (
         <div
           className="rounded-lg bg-(--red-tint) text-(--red) text-sm p-3 mb-4"
           role="alert"
         >
-          {error}
+          {pageError}
         </div>
       )}
       {loading && (
@@ -104,6 +186,9 @@ export default function CandidatoResultadosPage() {
         results.map((analysis) => {
           const completed =
             analysis.status === "completed" && analysis.overallScore !== null;
+          const canRetry =
+            analysis.status === "ready_to_analyze" ||
+            analysis.status === "failed";
           return (
             <section
               className="card card-pad mb-4.5"
@@ -150,13 +235,32 @@ export default function CandidatoResultadosPage() {
 
               {!completed && (
                 <p className="text-sm text-(--ink-soft) mt-4">
-                  {statusMessage(analysis.status)}
+                  {analyzingId === analysis.application.id
+                    ? "Calculando tu Match IA con las entrevistas…"
+                    : statusMessage(analysis.status)}
+                </p>
+              )}
+              {cardErrors[analysis.application.id] && (
+                <p className="text-xs text-(--red) mt-2">
+                  {cardErrors[analysis.application.id]}
                 </p>
               )}
               {analysis.status === "failed" && analysis.failureReason && (
                 <p className="text-xs text-(--red) mt-2">
                   {analysis.failureReason}
                 </p>
+              )}
+              {canRetry && (
+                <button
+                  type="button"
+                  className="btn btn-accent mt-3"
+                  disabled={analyzingId === analysis.application.id}
+                  onClick={() => void handleRetry(analysis.application.id)}
+                >
+                  {analyzingId === analysis.application.id
+                    ? "Analizando…"
+                    : "Calcular Match IA"}
+                </button>
               )}
 
               {completed && (
