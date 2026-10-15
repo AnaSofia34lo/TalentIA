@@ -96,7 +96,10 @@ export default function CandidatoPostulacionesPage() {
     }
     if (application.status === 'technical_test' || application.status === 'shortlisted') {
       return (
-        <Link href="/candidato/prueba-tecnica" className={`${actionButtonClass} btn-accent`}>
+        <Link
+          href={`/candidato/prueba-tecnica?applicationId=${encodeURIComponent(application.id)}`}
+          className={`${actionButtonClass} btn-accent`}
+        >
           Hacer prueba
           <ArrowRightIcon size={14} />
         </Link>
