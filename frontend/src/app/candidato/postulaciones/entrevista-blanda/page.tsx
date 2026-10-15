@@ -201,7 +201,7 @@ function EntrevistaBlandaContent() {
   if (isLoading) return <LoadingInterview />;
   if (!cameraSupported) return <div className="center-shell"><div className="center-card"><h3 className="text-lg font-bold mb-2">Cámara no disponible</h3><p className="text-[var(--red)] text-sm">Tu navegador no permite acceder a la cámara y el micrófono.</p></div></div>;
   if (error && !interviewId) return <div className="center-shell"><div className="center-card"><h3 className="text-lg font-bold mb-2">No se pudo cargar la entrevista</h3><p className="text-[var(--red)] text-sm">{error}</p></div></div>;
-  if (isCompleted) return <div className="center-shell"><div className="center-card"><div className="success-check"><CheckIcon size={30} /></div><h3 className="text-xl font-bold mb-2.5">Entrevista completada</h3><p className="text-[var(--ink-soft)] text-sm leading-relaxed mb-6">Tus respuestas fueron guardadas para el análisis de habilidades blandas.</p><button type="button" className="btn btn-primary btn-block py-3" onClick={() => router.push('/candidato/postulaciones')}>Volver a mis postulaciones</button></div></div>;
+  if (isCompleted) return <div className="center-shell"><div className="center-card"><div className="success-check"><CheckIcon size={30} /></div><h3 className="text-xl font-bold mb-2.5">Entrevista completada</h3><p className="text-[var(--ink-soft)] text-sm leading-relaxed mb-6">Tus respuestas y video fueron guardados. La IA iniciará el análisis de correspondencia con la vacante.</p><button type="button" className="btn btn-primary btn-block py-3" onClick={() => router.push('/candidato/resultados')}>Ver estado del análisis</button></div></div>;
 
   const finished = currentQuestion >= questions.length;
   return (

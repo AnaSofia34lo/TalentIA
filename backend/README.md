@@ -296,6 +296,27 @@ Al arrancar el backend se asegura una **cuenta demo de reclutador**
 
 (Configurable con `DEMO_RECRUITER_EMAIL` / `DEMO_RECRUITER_PASSWORD` en `.env`.)
 
+### HU-32: Análisis de entrevistas mediante IA
+
+Al completar la entrevista de habilidades blandas, el sistema inicia el análisis
+automático de las respuestas técnicas y del video conductual. Gemini recibe el
+contexto de la vacante, requisitos, respuestas escritas, preguntas marcadas en el
+video y el archivo almacenado en Supabase Storage. El resultado se persiste en
+`interview_analyses` y también crea evaluaciones `technical` y `behavioral`.
+
+Endpoints Swagger (todos requieren `Bearer <access_token>`):
+
+- `GET /candidate/interview-analyses`: el candidato consulta únicamente sus análisis.
+- `POST /recruiter/applications/:applicationId/interview-analysis`: el recruiter ejecuta
+  o repite el análisis de una postulación de su organización. Body: `{ "force": false }`.
+- `GET /recruiter/applications/:applicationId/interview-analysis`: consulta el análisis
+  de una postulación de su organización.
+
+Los estados son `pending`, `processing`, `completed` y `failed`. Para proteger el
+uso de IA, el video se descarga solo desde el bucket privado de Supabase, se limita a
+`MAX_AI_VIDEO_BYTES` (20 MB por defecto) y no se evalúan atributos sensibles. Se
+evalúan exclusivamente respuestas, competencias observables y requisitos del cargo.
+
 ## Seguridad
 
 - JWT de Supabase validado en cada request protegido

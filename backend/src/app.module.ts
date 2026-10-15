@@ -10,6 +10,8 @@ import { HealthModule } from './modules/health/health.module.js';
 import { ResumeIntelligenceModule } from './modules/resume-intelligence/resume-intelligence.module.js';
 import { VacanciesModule } from './modules/vacancies/vacancies.module.js';
 import { InterviewsModule } from './modules/interviews/interviews.module.js';
+import { InterviewAnalysisModule } from './modules/interview-analysis/interview-analysis.module.js';
+import { TechnicalTestAccessModule } from './modules/technical-test-access/technical-test-access.module.js';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { InterviewsModule } from './modules/interviews/interviews.module.js';
     ResumeIntelligenceModule,
     VacanciesModule,
     InterviewsModule,
+    InterviewAnalysisModule,
+    TechnicalTestAccessModule,
     HealthModule,
   ],
   controllers: [AppController],
