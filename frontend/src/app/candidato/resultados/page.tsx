@@ -1,135 +1,337 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { AwardIcon, CheckIcon, TrendUpIcon, LogoSparkIcon } from '../../../shared/components/ui/Icons';
-import { EstadoBadge } from '../../../shared/components/ui/Badge';
+import React, { useEffect, useState } from "react";
+import {
+  AwardIcon,
+  CheckIcon,
+  TrendUpIcon,
+  LogoSparkIcon,
+} from "../../../shared/components/ui/Icons";
+import { EstadoBadge } from "../../../shared/components/ui/Badge";
+import {
+  InterviewAnalysisResponse,
+  useAuth,
+} from "../../../shared/context/AuthContext";
+import { MatchRing } from "../../../shared/components/ui/MatchRing";
+
+type CandidateApplication = {
+  id: string;
+  vacancy: { title: string; organization: { name: string } };
+};
+
+function statusLabel(status: InterviewAnalysisResponse["status"]) {
+  if (status === "completed") return "Compatibilidad disponible";
+  if (status === "failed") return "Análisis no completado";
+  if (status === "ready_to_analyze") return "Listo para analizar";
+  if (status === "not_available") return "No disponible";
+  return "Análisis en proceso";
+}
+
+function statusMessage(status: InterviewAnalysisResponse["status"]) {
+  if (status === "failed")
+    return "No fue posible completar el análisis. Puedes reintentarlo.";
+  if (status === "ready_to_analyze")
+    return "Ya completaste ambas entrevistas. Calcularemos tu Match IA.";
+  if (status === "not_available")
+    return "Completa las entrevistas técnica y de habilidades blandas para obtener tu porcentaje.";
+  return "La IA está preparando el resultado de tus entrevistas. Esta pantalla se actualizará sola.";
+}
 
 export default function CandidatoResultadosPage() {
+  const {
+    listCandidateApplications,
+    getCandidateInterviewAnalysis,
+    runCandidateInterviewAnalysis,
+  } = useAuth();
+  const [results, setResults] = useState<InterviewAnalysisResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [pageError, setPageError] = useState("");
+
+  const loadResults = async () => {
+    const applications = (await listCandidateApplications()) as CandidateApplication[];
+    const items = await Promise.all(
+      applications.map((application) =>
+        getCandidateInterviewAnalysis(application.id),
+      ),
+    );
+    return items;
+  };
+
+  useEffect(() => {
+    let active = true;
+    void loadResults()
+      .then(async (items) => {
+        if (!active) return;
+        setResults(items);
+
+        const pending = items.filter(
+          (item) =>
+            item.status === "ready_to_analyze" || item.status === "failed",
+        );
+        const nextErrors: Record<string, string> = {};
+
+        for (const item of pending) {
+          if (!active) return;
+          try {
+            setAnalyzingId(item.application.id);
+            await runCandidateInterviewAnalysis(item.application.id, true);
+          } catch (requestError) {
+            nextErrors[item.application.id] =
+              requestError instanceof Error
+                ? requestError.message
+                : "No fue posible calcular el Match IA.";
+          }
+        }
+
+        if (!active) return;
+        setCardErrors(nextErrors);
+        const refreshed = await loadResults();
+        if (active) setResults(refreshed);
+      })
+      .catch((requestError) => {
+        if (active)
+          setPageError(
+            requestError instanceof Error
+              ? requestError.message
+              : "No fue posible consultar el análisis.",
+          );
+      })
+      .finally(() => {
+        if (active) {
+          setAnalyzingId(null);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const hasProcessing = results.some(
+      (item) => item.status === "processing" || item.status === "pending",
+    );
+    if (!hasProcessing) return;
+
+    const timer = setInterval(() => {
+      void loadResults()
+        .then(setResults)
+        .catch(() => undefined);
+    }, 4000);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results]);
+
+  const handleRetry = async (applicationId: string) => {
+    setPageError("");
+    setCardErrors((previous) => {
+      const next = { ...previous };
+      delete next[applicationId];
+      return next;
+    });
+    setAnalyzingId(applicationId);
+    try {
+      await runCandidateInterviewAnalysis(applicationId, true);
+      const refreshed = await loadResults();
+      setResults(refreshed);
+    } catch (requestError) {
+      setCardErrors((previous) => ({
+        ...previous,
+        [applicationId]:
+          requestError instanceof Error
+            ? requestError.message
+            : "No fue posible calcular el Match IA.",
+      }));
+    } finally {
+      setAnalyzingId(null);
+    }
+  };
+
   return (
     <div>
       <div className="page-head">
         <div>
           <h1 className="page-title">Mis resultados</h1>
           <p className="page-sub">
-            Estado y retroalimentación general de tus procesos con DS4B.
+            Consulta la correspondencia de tus entrevistas con cada vacante.
           </p>
         </div>
       </div>
 
-      {/* Overview Card */}
-      <div className="card card-pad flex items-center gap-5 flex-wrap mb-4.5">
+      {pageError && (
         <div
-          className="kpi-icon"
-          style={{
-            background: 'var(--green-tint)',
-            color: 'var(--green)',
-            width: '52px',
-            height: '52px'
-          }}
+          className="rounded-lg bg-(--red-tint) text-(--red) text-sm p-3 mb-4"
+          role="alert"
         >
-          <AwardIcon size={24} />
+          {pageError}
         </div>
-        <div className="flex-1 min-w-[220px]">
-          <h3 className="text-base font-bold">Datos e IA — DS4B</h3>
-          <div className="mt-2">
-            <EstadoBadge estado="Entrevista enviada · en análisis" />
-          </div>
+      )}
+      {loading && (
+        <div className="card card-pad text-sm text-(--ink-soft)">
+          Cargando tus resultados de compatibilidad…
         </div>
-      </div>
+      )}
+      {!loading && results.length === 0 && (
+        <div className="card card-pad text-sm text-(--ink-soft)">
+          Aún no tienes postulaciones para mostrar.
+        </div>
+      )}
 
-      {/* Feedback Highlights Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5 mb-4.5">
-        {/* Strengths */}
-        <div className="card card-pad">
-          <h3 className="text-base font-bold mb-1.5">Lo que se destacó</h3>
-          <p className="text-[var(--ink-faint)] text-xs mb-3.5">
-            Aspectos que la IA identificó como fortalezas en tu entrevista.
-          </p>
-          <div className="result-list">
-            <div className="result-item">
-              <div
-                className="result-ico"
-                style={{ background: 'var(--green-tint)', color: 'var(--green)' }}
-              >
-                <CheckIcon size={14} />
+      {!loading &&
+        results.map((analysis) => {
+          const completed =
+            analysis.status === "completed" && analysis.overallScore !== null;
+          const canRetry =
+            analysis.status === "ready_to_analyze" ||
+            analysis.status === "failed";
+          return (
+            <section
+              className="card card-pad mb-4.5"
+              key={analysis.application.id}
+            >
+              <div className="flex items-center gap-4 flex-wrap">
+                <div
+                  className="kpi-icon"
+                  style={{
+                    background: completed
+                      ? "var(--green-tint)"
+                      : "var(--navy-tint)",
+                    color: completed ? "var(--green)" : "var(--navy)",
+                    width: "52px",
+                    height: "52px",
+                  }}
+                >
+                  {completed ? (
+                    <AwardIcon size={24} />
+                  ) : (
+                    <LogoSparkIcon size={24} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-55">
+                  <h2 className="text-base font-bold">
+                    {analysis.application.vacancy.title}
+                  </h2>
+                  <p className="text-sm text-(--ink-soft)">
+                    {analysis.application.vacancy.organization}
+                  </p>
+                  <div className="mt-2">
+                    <EstadoBadge estado={statusLabel(analysis.status)} />
+                  </div>
+                </div>
+                {completed && (
+                  <MatchRing
+                    percentage={Math.round(analysis.overallScore ?? 0)}
+                    size={92}
+                    label="Match IA"
+                    showLabel
+                  />
+                )}
               </div>
-              <div className="result-text">
-                Buena claridad al explicar decisiones técnicas
-              </div>
-            </div>
-            <div className="result-item">
-              <div
-                className="result-ico"
-                style={{ background: 'var(--green-tint)', color: 'var(--green)' }}
-              >
-                <CheckIcon size={14} />
-              </div>
-              <div className="result-text">
-                Manejo consistente de fuentes de datos
-              </div>
-            </div>
-            <div className="result-item">
-              <div
-                className="result-ico"
-                style={{ background: 'var(--green-tint)', color: 'var(--green)' }}
-              >
-                <CheckIcon size={14} />
-              </div>
-              <div className="result-text">
-                Ejemplos concretos de uso de IA
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Areas for Growth */}
-        <div className="card card-pad">
-          <h3 className="text-base font-bold mb-1.5">Qué puedes seguir mejorando</h3>
-          <p className="text-[var(--ink-faint)] text-xs mb-3.5">
-            Puntos de crecimiento identificados, para que sigas fortaleciéndote de cara a futuros procesos.
-          </p>
-          <div className="result-list">
-            <div className="result-item">
-              <div
-                className="result-ico"
-                style={{ background: 'var(--info-tint)', color: 'var(--info)' }}
-              >
-                <TrendUpIcon size={14} />
-              </div>
-              <div className="result-text">
-                Profundizar ejemplos de trabajo en equipos grandes
-              </div>
-            </div>
-            <div className="result-item">
-              <div
-                className="result-ico"
-                style={{ background: 'var(--info-tint)', color: 'var(--info)' }}
-              >
-                <TrendUpIcon size={14} />
-              </div>
-              <div className="result-text">
-                Dar más contexto de negocio al explicar resultados técnicos
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+              {!completed && (
+                <p className="text-sm text-(--ink-soft) mt-4">
+                  {analyzingId === analysis.application.id
+                    ? "Calculando tu Match IA con las entrevistas…"
+                    : statusMessage(analysis.status)}
+                </p>
+              )}
+              {cardErrors[analysis.application.id] && (
+                <p className="text-xs text-(--red) mt-2">
+                  {cardErrors[analysis.application.id]}
+                </p>
+              )}
+              {analysis.status === "failed" && analysis.failureReason && (
+                <p className="text-xs text-(--red) mt-2">
+                  {analysis.failureReason}
+                </p>
+              )}
+              {canRetry && (
+                <button
+                  type="button"
+                  className="btn btn-accent mt-3"
+                  disabled={analyzingId === analysis.application.id}
+                  onClick={() => void handleRetry(analysis.application.id)}
+                >
+                  {analyzingId === analysis.application.id
+                    ? "Analizando…"
+                    : "Calcular Match IA"}
+                </button>
+              )}
 
-      {/* What's Next Box */}
-      <div className="ai-box items-start mb-0">
-        <div className="ai-icon">
-          <LogoSparkIcon size={18} />
-        </div>
-        <div>
-          <h4 className="font-bold text-sm mb-1.5">¿Qué sigue?</h4>
-          <p className="text-[var(--ink-soft)] text-sm leading-relaxed">
-            Tu entrevista ya fue enviada y analizada por la IA. El equipo de Recursos Humanos de DS4B está revisando ese análisis junto con tu perfil para tomar la decisión final del proceso. Te notificaremos por aquí en cuanto haya una novedad.
-          </p>
-          <div className="disclaimer">
-            Estos aspectos son una guía general de aprendizaje, no el detalle completo de tu evaluación; la decisión final siempre es de Recursos Humanos.
-          </div>
-        </div>
-      </div>
+              {completed && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5 mt-5">
+                    <div>
+                      <h3 className="text-base font-bold mb-1.5">
+                        Lo que se destacó
+                      </h3>
+                      <div className="result-list">
+                        {analysis.strengths.map((strength) => (
+                          <div className="result-item" key={strength}>
+                            <div
+                              className="result-ico"
+                              style={{
+                                background: "var(--green-tint)",
+                                color: "var(--green)",
+                              }}
+                            >
+                              <CheckIcon size={14} />
+                            </div>
+                            <div className="result-text">{strength}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold mb-1.5">
+                        Qué puedes seguir mejorando
+                      </h3>
+                      <div className="result-list">
+                        {analysis.improvements.map((improvement) => (
+                          <div className="result-item" key={improvement}>
+                            <div
+                              className="result-ico"
+                              style={{
+                                background: "var(--info-tint)",
+                                color: "var(--info)",
+                              }}
+                            >
+                              <TrendUpIcon size={14} />
+                            </div>
+                            <div className="result-text">{improvement}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="ai-box items-start mt-5 mb-0">
+                    <div className="ai-icon">
+                      <LogoSparkIcon size={18} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm mb-1.5">
+                        Recomendación
+                      </h4>
+                      <p className="text-(--ink-soft) text-sm leading-relaxed">
+                        {analysis.recommendation ??
+                          "El equipo de Recursos Humanos revisará tu resultado junto con tu perfil."}
+                      </p>
+                      <div className="disclaimer">
+                        Este porcentaje es una guía generada por IA; la decisión
+                        final corresponde al equipo de Recursos Humanos.
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          );
+        })}
     </div>
   );
 }

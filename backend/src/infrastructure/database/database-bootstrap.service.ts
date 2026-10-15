@@ -60,6 +60,36 @@ export class DatabaseBootstrapService implements OnApplicationBootstrap {
       }
 
       if (missingTables.length === 0) {
+        await this.prisma.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS interview_analyses (
+            id TEXT PRIMARY KEY,
+            "applicationId" TEXT NOT NULL UNIQUE REFERENCES candidate_applications(id) ON DELETE CASCADE,
+            "technicalInterviewId" TEXT,
+            "behavioralInterviewId" TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            "technicalScore" DOUBLE PRECISION,
+            "behavioralScore" DOUBLE PRECISION,
+            "overallScore" DOUBLE PRECISION,
+            "technicalSummary" TEXT,
+            "behavioralSummary" TEXT,
+            strengths JSONB,
+            improvements JSONB,
+            recommendation TEXT,
+            "failureReason" TEXT,
+            "analyzedAt" TIMESTAMPTZ,
+            "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS interview_analyses_status_idx ON interview_analyses(status);
+        `);
+        await this.prisma.$executeRawUnsafe(`
+          ALTER TABLE candidate_applications
+          ADD COLUMN IF NOT EXISTS "technicalTestEnabled" BOOLEAN NOT NULL DEFAULT false;
+        `);
+        await this.prisma.$executeRawUnsafe(`
+          ALTER TABLE candidate_applications
+          ADD COLUMN IF NOT EXISTS "technicalTestEvaluatedAt" TIMESTAMPTZ;
+        `);
         this.logger.log('✅ Las tablas ya existen en la base de datos.');
         return;
       }
