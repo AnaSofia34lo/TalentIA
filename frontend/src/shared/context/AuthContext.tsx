@@ -58,6 +58,12 @@ export interface InterviewAnalysisResponse {
   strengths: string[];
   improvements: string[];
   recommendation: string | null;
+  scoreExplanation?: {
+    technical: string | null;
+    behavioral: string | null;
+    positiveFactors: string[];
+    improvementFactors: string[];
+  };
   failureReason: string | null;
   analyzedAt: string | null;
   interviewsReady?: boolean;
@@ -78,6 +84,19 @@ export interface TechnicalTestAccessResponse {
   message: string;
   vacancyTitle: string;
   evaluatedAt: string | null;
+}
+
+export interface RecruiterCandidateAnalysisResponse {
+  candidate: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string | null;
+    profile?: { professionalTitle?: string | null; currentCompany?: string | null; yearsOfExperience?: number | null } | null;
+    technicalSkills: Array<{ name: string; estimatedProficiency: number }>;
+  };
+  application: { id: string; status: string; submittedAt: string; vacancy: { id: string; title: string; organization: string } };
+  analysis: InterviewAnalysisResponse;
 }
 
 interface AuthContextType {
@@ -184,6 +203,12 @@ interface AuthContextType {
       }>;
     }>
   >;
+  listVacancyApplicants: (vacancyId: string) => Promise<{
+    vacancy: { id: string; name: string; description: string; status: string; organization: string };
+    totalCandidates: number;
+    ranking: VacancyApplicant[];
+    candidates: VacancyApplicant[];
+  }>;
   listAvailableVacancies: () => Promise<
     Array<{
       id: string;
@@ -259,6 +284,7 @@ interface AuthContextType {
   getCandidateInterviewAnalysis: (
     applicationId: string,
   ) => Promise<InterviewAnalysisResponse>;
+  getRecruiterApplicationAnalysis: (applicationId: string) => Promise<RecruiterCandidateAnalysisResponse>;
   runCandidateInterviewAnalysis: (
     applicationId: string,
     force?: boolean,
@@ -279,6 +305,27 @@ interface AuthResponse {
   access_token: string;
   refresh_token: string;
   user: { role: UserRole; email?: string };
+}
+
+export interface VacancyApplicant {
+  applicationId: string;
+  candidateId: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  submittedAt: string;
+  status: string;
+  score: number;
+  scoreSource: 'interview_ai' | 'stored_match' | 'cv_skills';
+  rank: number;
+  medal: 'gold' | 'silver' | 'bronze' | null;
+  interviewAnalysis?: {
+    status: string;
+    technicalScore: number | null;
+    behavioralScore: number | null;
+    overallScore: number | null;
+  } | null;
+  profile?: { professionalTitle?: string | null; currentCompany?: string | null } | null;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -530,6 +577,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return requestApi("vacancies");
   };
 
+  const listVacancyApplicants = async (vacancyId: string) => {
+    return requestApi(`vacancies/${vacancyId}/applications`) as Promise<{
+      vacancy: { id: string; name: string; description: string; status: string; organization: string };
+      totalCandidates: number;
+      ranking: VacancyApplicant[];
+      candidates: VacancyApplicant[];
+    }>;
+  };
+
   const listAvailableVacancies = async () => {
     return requestApi("vacancies/available");
   };
@@ -624,6 +680,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) as Promise<InterviewAnalysisResponse>;
   };
 
+  const getRecruiterApplicationAnalysis = async (applicationId: string) => {
+    return requestApi(
+      `recruiter/applications/${applicationId}/interview-analysis`,
+    ) as Promise<RecruiterCandidateAnalysisResponse>;
+  };
+
   const getTechnicalTestAccess = async (applicationId: string) => {
     return requestApi(
       `candidate/applications/${applicationId}/technical-test-access`,
@@ -704,6 +766,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         generateInterviewQuestions,
         updateVacancy,
         listVacancies,
+        listVacancyApplicants,
         listAvailableVacancies,
         applyToVacancy,
         listCandidateApplications,
@@ -717,6 +780,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         listInterviewAnalyses,
         getCandidateInterviewAnalysis,
         runCandidateInterviewAnalysis,
+        getRecruiterApplicationAnalysis,
         getTechnicalTestAccess,
         logout,
         markAllNotifsRead,

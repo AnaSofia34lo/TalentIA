@@ -15,6 +15,12 @@ Este backend implementa la base técnica para TalentIA siguiendo arquitectura li
 - Swagger
 - CORS
 
+## Backend Desplegado
+
+El backend y Swagger Api Docs se encuentra desplegado en la aplicación web:
+
+https://talentia-api.onrender.com/api/docs
+
 ## Variables de entorno
 
 Copia `.env.example` a `.env` y configura los valores reales de Supabase. No uses claves de
@@ -92,6 +98,16 @@ Ejemplo de solicitud:
   "fullName": "Innovaciones Andinas S.A.S."
 }
 ```
+
+## Despliegue en producción
+
+El archivo `../render.yaml` configura el servicio NestJS en Render. El despliegue
+ejecuta `npx prisma migrate deploy` antes de iniciar la aplicación y utiliza la
+conexión transaccional de `DATABASE_URL`; `DIRECT_URL` se conserva para Prisma.
+
+En Render configura también `FRONTEND_URL` con el dominio público del frontend.
+Puede contener varios orígenes separados por coma. CORS queda restringido a esos
+orígenes cuando la variable existe.
 
 El endpoint valida correo, campos obligatorios, mínimo de ocho caracteres, mayúscula,
 minúscula, número, carácter especial y coincidencia de contraseñas. Devuelve `409` si
@@ -316,6 +332,44 @@ Los estados son `pending`, `processing`, `completed` y `failed`. Para proteger e
 uso de IA, el video se descarga solo desde el bucket privado de Supabase, se limita a
 `MAX_AI_VIDEO_BYTES` (20 MB por defecto) y no se evalúan atributos sensibles. Se
 evalúan exclusivamente respuestas, competencias observables y requisitos del cargo.
+
+### HU-20 / HU-25: Candidatos y ranking por vacante
+
+`GET /vacancies/:vacancyId/applications` requiere JWT válido y rol `recruiter`.
+La vacante se valida contra la organización del recruiter, evitando consultar
+postulantes de otra empresa. La respuesta contiene todos los candidatos, su
+postulación, perfil, estado y `score`, además de `ranking` con los tres primeros.
+
+El score prioriza el `overallScore` del análisis de entrevistas IA; si todavía no
+existe, usa el `matchScore` almacenado y finalmente calcula la compatibilidad con
+las habilidades técnicas extraídas del CV. Cada elemento incluye `rank` y `medal`:
+`gold` para el primero, `silver` para el segundo y `bronze` para el tercero.
+
+Ejemplo:
+
+```http
+GET /vacancies/4bd3f7f1-1d8c-4e4d-9f78-fb4fb3cc90ef/applications
+Authorization: Bearer <access_token>
+```
+
+Swagger documenta el parámetro `vacancyId`, las respuestas `200`, `401`, `403` y
+`404`, y un ejemplo con ranking y lista completa.
+
+### HU-19 / HU-23 / HU-24: Resumen y explicación para recruiter
+
+El análisis de entrevistas IA persiste un resumen técnico y otro de habilidades
+blandas, además de fortalezas, oportunidades de mejora, recomendación y puntajes
+por componente. Estos datos permiten explicar el `overallScore` sin presentar la
+calificación como una decisión automática definitiva.
+
+El recruiter puede consultar:
+
+- `GET /recruiter/applications/:applicationId/interview-analysis`: resumen y explicación de una postulación específica.
+
+Ambos endpoints validan JWT, rol `recruiter` y pertenencia a la misma organización.
+La respuesta identifica explícitamente candidato, vacante y postulación, e incluye `scoreExplanation` con `technical`, `behavioral`,
+`positiveFactors` e `improvementFactors`. Si las entrevistas aún no están completas,
+devuelve el estado `not_available` y no inventa una explicación.
 
 ## Seguridad
 

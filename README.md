@@ -14,23 +14,29 @@ TalentIA es una plataforma para gestión de contratación con foco en automatiza
 - Seguridad: JWT de Supabase
 - Documentación: Swagger
 
+## Backend Desplegado
+
+El backend y Swagger Api Docs se encuentra desplegado en la aplicación web:
+
+https://talentia-api.onrender.com/api/docs
+
 ## Estado de las historias de usuario
 
-| Historia | Capacidad | Estado actual |
-| --- | --- | --- |
-| HU-01 | Registro de candidatos | Implementada |
-| HU-02 | Inicio de sesión | Implementada |
-| HU-03 | Información personal del candidato | Implementada |
-| HU-04 | Carga de hoja de vida en PDF | Implementada |
-| HU-05 | Registro de experiencia laboral | Implementada |
-| HU-06 | Extracción de experiencia laboral con IA | Implementada |
-| HU-07 | Identificación de certificaciones | Backend implementado; visualización dedicada pendiente |
-| HU-08 | Skills técnicas y Match IA trazable | Implementada |
-| HU-09 | Nombre de la vacante | Implementada |
-| HU-10 | Descripción del cargo | Implementada |
-| HU-11 | Salario de la vacante | Implementada |
-| HU-12 | Competencias técnicas de la vacante | Implementada |
-| HU-13 | Cambio de estado de la vacante | Implementada |
+| Historia | Capacidad                                | Estado actual                                          |
+| -------- | ---------------------------------------- | ------------------------------------------------------ |
+| HU-01    | Registro de candidatos                   | Implementada                                           |
+| HU-02    | Inicio de sesión                         | Implementada                                           |
+| HU-03    | Información personal del candidato       | Implementada                                           |
+| HU-04    | Carga de hoja de vida en PDF             | Implementada                                           |
+| HU-05    | Registro de experiencia laboral          | Implementada                                           |
+| HU-06    | Extracción de experiencia laboral con IA | Implementada                                           |
+| HU-07    | Identificación de certificaciones        | Backend implementado; visualización dedicada pendiente |
+| HU-08    | Skills técnicas y Match IA trazable      | Implementada                                           |
+| HU-09    | Nombre de la vacante                     | Implementada                                           |
+| HU-10    | Descripción del cargo                    | Implementada                                           |
+| HU-11    | Salario de la vacante                    | Implementada                                           |
+| HU-12    | Competencias técnicas de la vacante      | Implementada                                           |
+| HU-13    | Cambio de estado de la vacante           | Implementada                                           |
 
 ### Candidato
 
@@ -72,6 +78,13 @@ no forma parte de las HU-01 a HU-13 implementadas en esta entrega.
 - [Backend](backend/README.md): API, autenticación, persistencia, IA y Swagger.
 - [Frontend](frontend/README.md): pantallas, flujos de usuario e integración con la API.
 
+### HU-20 y HU-25
+
+El recruiter puede seleccionar una vacante desde `/admin/banco` y consultar en una
+misma vista todos sus candidatos postulados. La lista se ordena por compatibilidad y
+los tres primeros se resaltan con oro, plata y bronce. El backend expone y documenta
+`GET /vacancies/:vacancyId/applications` en Swagger.
+
 ## Ejecución rápida
 
 ```bash
@@ -89,3 +102,10 @@ npm run dev
 
 Inicia primero el backend para que el frontend pueda consumir la API local.
 
+## Despliegue
+
+El archivo `render.yaml` contiene los dos servicios de producción: `talentia-api`
+con NestJS y `talentia-web` con Next.js. En Render crea un Blueprint desde el
+repositorio y completa las variables marcadas con `sync: false`. Usa en el
+frontend la URL HTTPS pública del backend y en `FRONTEND_URL` la URL HTTPS pública
+del frontend. Nunca subas archivos `.env` ni credenciales al repositorio.

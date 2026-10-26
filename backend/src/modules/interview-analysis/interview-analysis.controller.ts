@@ -192,17 +192,25 @@ export class InterviewAnalysisController {
   @Get('recruiter/applications/:applicationId/interview-analysis')
   @Roles('recruiter')
   @ApiOperation({
-    summary: 'Consulta el análisis de IA de una postulación de la organización',
+    summary: 'Consulta el análisis y resumen de una postulación',
+    description:
+      'Devuelve el candidato, la vacante específica, el estado de sus entrevistas, el resumen generado por IA y la explicación del puntaje. La postulación se valida contra la organización del recruiter.',
   })
   @ApiParam({
     name: 'applicationId',
     example: 'c3d58a33-3d9a-4ca6-a49f-6d9ef05edbbd',
-    description: 'UUID de la postulación.',
+    description: 'UUID único de la postulación candidato-vacante.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Resultado del análisis.',
-    schema: { example: analysisExample },
+    description: 'Resumen de la postulación y resultado del análisis.',
+    schema: {
+      example: {
+        candidate: { id: '2e3d1d5c-6f5f-4d30-a9dd-4e4cfd4b4f87', fullName: 'Mariana Torres', email: 'mariana@correo.co' },
+        application: { id: 'c3d58a33-3d9a-4ca6-a49f-6d9ef05edbbd', status: 'reviewed', vacancy: { id: '4bd3f7f1-1d8c-4e4d-9f78-fb4fb3cc90ef', title: 'Desarrollador Backend', organization: 'Innovaciones Andinas S.A.S.' } },
+        analysis: { status: 'completed', technicalScore: 86, behavioralScore: 81, overallScore: 84, technicalSummary: 'Demostró dominio práctico de APIs REST.', behavioralSummary: 'Comunicó ejemplos concretos y mantuvo una estructura clara.', scoreExplanation: { technical: 'Demostró dominio práctico de APIs REST.', behavioral: 'Comunicó ejemplos concretos y mantuvo una estructura clara.', positiveFactors: ['Explica decisiones técnicas con claridad'], improvementFactors: ['Profundizar observabilidad'] }, recommendation: 'Puede continuar a revisión humana.' },
+      },
+    },
   })
   @ApiResponse({
     status: 404,
@@ -215,4 +223,5 @@ export class InterviewAnalysisController {
   ) {
     return this.analyses.getRecruiterAnalysis(recruiterId, applicationId);
   }
+
 }

@@ -21,6 +21,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
+En producción, las variables `NEXT_PUBLIC_*` deben configurarse en el proveedor
+de despliegue y no en el repositorio. `NEXT_PUBLIC_API_URL` debe apuntar a la URL
+HTTPS pública del backend, por ejemplo `https://talentia-api.onrender.com`.
+Después de cambiarla es necesario crear un nuevo despliegue porque Next.js las
+incluye durante el build.
+
 ## HU-01: Registrar cuenta
 
 El flujo de candidato permite crear una cuenta mediante `POST /auth/register`.
@@ -132,6 +138,24 @@ consulta `GET /candidate/interview-analyses` usando el JWT del candidato y muest
 estado del análisis, porcentaje general, fortalezas, oportunidades de mejora y la
 recomendación general cuando estén disponibles. Mientras Gemini procesa el resultado,
 la pantalla muestra un estado de espera; no inventa resultados locales.
+
+## HU-20 y HU-25: Candidatos y ranking por vacante
+
+Desde `/admin/banco`, el recruiter selecciona una vacante real de su organización.
+La vista consulta `GET /vacancies/:vacancyId/applications` y muestra en el mismo
+lugar el ranking IA y la tabla completa de candidatos postulados. El primer,
+segundo y tercer candidato se resaltan con medallas de oro, plata y bronce; el
+resto aparece en la lista normal ordenada por puntaje.
+
+## HU-19, HU-23 y HU-24: Resumen y explicación para recruiter
+
+Desde el enlace `Ver perfil` del banco de candidatos, el recruiter consulta el
+perfil asociado a la postulación concreta (`applicationId`) y a la vacante
+seleccionada; el mismo candidato puede abrirse de forma independiente para
+cada vacante. El recruiter consulta el resumen real generado por IA: puntaje técnico, puntaje de habilidades blandas,
+puntaje general, resumen de cada entrevista, fortalezas, factores de mejora y
+recomendación. La vista explica el puntaje mediante `scoreExplanation` y muestra
+un aviso cuando las entrevistas todavía no están listas para análisis.
 
 ## Fuera del alcance actual
 

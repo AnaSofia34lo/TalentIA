@@ -282,26 +282,84 @@ export class InterviewAnalysisService {
         'El recruiter no tiene una organizacion asociada.',
       );
     }
-    const analysis = await this.prisma.interviewAnalysis.findFirst({
-      where: {
-        applicationId,
-        application: { organizationId: recruiter.organizationId },
-      },
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: { id: applicationId, organizationId: recruiter.organizationId },
       include: {
-        application: {
+        candidate: {
           include: {
-            vacancy: { include: { organization: { select: { name: true } } } },
-            candidate: { select: { fullName: true, email: true } },
+            candidateProfile: true,
+            technicalSkills: { select: { name: true, estimatedProficiency: true } },
           },
         },
+        vacancy: { include: { organization: { select: { name: true } } } },
+        interviewAnalysis: true,
+        interviews: { select: { type: true, status: true, videoUrl: true } },
       },
     });
-    if (!analysis) {
+    if (!application) {
       throw new NotFoundException(
-        'No existe un analisis para esta postulacion.',
+        'La postulacion no existe o no pertenece a la organización.',
       );
     }
-    return this.serialize(analysis, analysis.application);
+
+    const technicalReady = application.interviews.some(
+      (interview) =>
+        interview.type === 'technical' && interview.status === 'completed',
+    );
+    const behavioralReady = application.interviews.some(
+      (interview) =>
+        interview.type === 'behavioral' &&
+        interview.status === 'completed' &&
+        Boolean(interview.videoUrl),
+    );
+
+    return {
+      candidate: {
+        id: application.candidateId,
+        fullName: application.candidate.fullName,
+        email: application.candidate.email,
+        phone: application.candidate.phone,
+        profile: application.candidate.candidateProfile,
+        technicalSkills: application.candidate.technicalSkills,
+      },
+      application: {
+        id: application.id,
+        status: application.status,
+        submittedAt: application.submittedAt,
+        vacancy: {
+          id: application.vacancyId,
+          title: application.vacancy.title,
+          organization: application.vacancy.organization.name,
+        },
+      },
+      analysis: application.interviewAnalysis
+        ? {
+            ...this.serialize(application.interviewAnalysis, application),
+            interviewsReady: true,
+          }
+        : {
+            id: application.id,
+            status: technicalReady && behavioralReady ? 'ready_to_analyze' : 'not_available',
+            technicalScore: null,
+            behavioralScore: null,
+            overallScore: null,
+            technicalSummary: null,
+            behavioralSummary: null,
+            strengths: [],
+            improvements: [],
+            recommendation: null,
+            failureReason: null,
+            analyzedAt: null,
+            interviewsReady: technicalReady && behavioralReady,
+            application: {
+              id: application.id,
+              vacancy: {
+                title: application.vacancy.title,
+                organization: application.vacancy.organization.name,
+              },
+            },
+          },
+    };
   }
 
   async analyzeForRecruiter(
@@ -666,6 +724,12 @@ export class InterviewAnalysisService {
         ? analysis.improvements
         : [],
       recommendation: analysis.recommendation,
+      scoreExplanation: {
+        technical: analysis.technicalSummary,
+        behavioral: analysis.behavioralSummary,
+        positiveFactors: Array.isArray(analysis.strengths) ? analysis.strengths : [],
+        improvementFactors: Array.isArray(analysis.improvements) ? analysis.improvements : [],
+      },
       failureReason:
         analysis.status === 'failed' ? analysis.failureReason : null,
       analyzedAt: analysis.analyzedAt,
