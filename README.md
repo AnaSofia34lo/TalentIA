@@ -96,3 +96,11 @@ npm run dev
 
 Inicia primero el backend para que el frontend pueda consumir la API local.
 
+## Despliegue
+
+El archivo `render.yaml` contiene los dos servicios de producción: `talentia-api`
+con NestJS y `talentia-web` con Next.js. En Render crea un Blueprint desde el
+repositorio y completa las variables marcadas con `sync: false`. Usa en el
+frontend la URL HTTPS pública del backend y en `FRONTEND_URL` la URL HTTPS pública
+del frontend. Nunca subas archivos `.env` ni credenciales al repositorio.
+
