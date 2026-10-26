@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, VideoIcon } from '../../../../shared/components/ui/Icons';
+import { ArrowRightIcon, CheckIcon, VideoIcon } from '../../../../shared/components/ui/Icons';
 import { useAuth } from '../../../../shared/context/AuthContext';
 
 type Question = { id: string; prompt: string; answer: string | null };
+const DEFAULT_BEHAVIORAL_INTERVIEW_DURATION_SECONDS = 25 * 60;
 
 function LoadingInterview() {
   return (
@@ -36,6 +36,10 @@ function EntrevistaBlandaContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
+  const [interviewDeadline, setInterviewDeadline] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(DEFAULT_BEHAVIORAL_INTERVIEW_DURATION_SECONDS);
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  const timeoutCompletionStartedRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -54,6 +58,10 @@ function EntrevistaBlandaContent() {
       .then((interview) => {
         if (!active) return;
         setInterviewId(interview.interviewId);
+        const remaining = interview.remainingSeconds ?? interview.durationSeconds;
+        const startedAt = interview.startedAt ? Date.parse(interview.startedAt) : Date.now();
+        setInterviewDeadline(startedAt + remaining * 1000);
+        setRemainingSeconds(remaining);
         setVacancyTitle(interview.vacancy.title);
         setQuestions(interview.questions);
         questionsRef.current = interview.questions;
@@ -74,6 +82,50 @@ function EntrevistaBlandaContent() {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, [startBehavioralInterview, vacancyId]);
+
+  useEffect(() => {
+    if (!interviewId) return;
+    const preventRestrictedActions = (event: Event) => event.preventDefault();
+    const preventShortcuts = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && ['c', 'v', 'x', 'a'].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+      }
+    };
+    const preventNavigation = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    const keepInterviewActive = () => window.history.pushState(null, '', window.location.href);
+    document.addEventListener('copy', preventRestrictedActions);
+    document.addEventListener('cut', preventRestrictedActions);
+    document.addEventListener('paste', preventRestrictedActions);
+    document.addEventListener('contextmenu', preventRestrictedActions);
+    document.addEventListener('keydown', preventShortcuts);
+    window.addEventListener('beforeunload', preventNavigation);
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', keepInterviewActive);
+    return () => {
+      document.removeEventListener('copy', preventRestrictedActions);
+      document.removeEventListener('cut', preventRestrictedActions);
+      document.removeEventListener('paste', preventRestrictedActions);
+      document.removeEventListener('contextmenu', preventRestrictedActions);
+      document.removeEventListener('keydown', preventShortcuts);
+      window.removeEventListener('beforeunload', preventNavigation);
+      window.removeEventListener('popstate', keepInterviewActive);
+    };
+  }, [interviewId]);
+
+  useEffect(() => {
+    if (!interviewDeadline || isTimedOut || !interviewId) return;
+    const updateRemainingTime = () => {
+      const seconds = Math.max(0, Math.ceil((interviewDeadline - Date.now()) / 1000));
+      setRemainingSeconds(seconds);
+      if (seconds === 0) setIsTimedOut(true);
+    };
+    updateRemainingTime();
+    const timer = window.setInterval(updateRemainingTime, 1000);
+    return () => window.clearInterval(timer);
+  }, [interviewDeadline, interviewId, isTimedOut]);
 
   useEffect(() => {
     if (isLoading || !videoRef.current || !canvasRef.current) return;
@@ -149,7 +201,7 @@ function EntrevistaBlandaContent() {
     };
   }, [cameraSupported, isLoading]);
 
-  const stopRecording = () => new Promise<Blob | null>((resolve) => {
+  const stopRecording = useCallback(() => new Promise<Blob | null>((resolve) => {
     const recorder = recorderRef.current;
     if (!recorder || recorder.state === 'inactive') {
       resolve(recordingChunksRef.current.length ? new Blob(recordingChunksRef.current, { type: 'video/webm' }) : null);
@@ -160,7 +212,7 @@ function EntrevistaBlandaContent() {
       resolve(new Blob(recordingChunksRef.current, { type: recorder.mimeType || 'video/webm' }));
     };
     recorder.stop();
-  });
+  }), []);
 
   const handleNextQuestion = async () => {
     const question = questions[currentQuestion];
@@ -179,8 +231,8 @@ function EntrevistaBlandaContent() {
     }
   };
 
-  const handleFinish = async () => {
-    if (!interviewId) return;
+  const handleFinish = useCallback(async () => {
+    if (!interviewId || isSubmitting) return;
     try {
       setIsSubmitting(true);
       const video = await stopRecording();
@@ -195,7 +247,15 @@ function EntrevistaBlandaContent() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [completeTechnicalInterview, interviewId, isSubmitting, stopRecording, uploadInterviewVideo]);
+
+  useEffect(() => {
+    if (!isTimedOut || !interviewId || isSubmitting || timeoutCompletionStartedRef.current) return;
+    timeoutCompletionStartedRef.current = true;
+    void handleFinish().catch(() => {
+      timeoutCompletionStartedRef.current = false;
+    });
+  }, [handleFinish, isTimedOut, interviewId, isSubmitting]);
 
   if (!vacancyId) return <div className="center-shell"><div className="center-card"><h3 className="text-lg font-bold mb-2">No se encontró la vacante seleccionada</h3><p className="text-[var(--red)] text-sm">Regresa a tus postulaciones e inicia la entrevista desde una vacante.</p></div></div>;
   if (isLoading) return <LoadingInterview />;
@@ -204,16 +264,37 @@ function EntrevistaBlandaContent() {
   if (isCompleted) return <div className="center-shell"><div className="center-card"><div className="success-check"><CheckIcon size={30} /></div><h3 className="text-xl font-bold mb-2.5">Entrevista completada</h3><p className="text-[var(--ink-soft)] text-sm leading-relaxed mb-6">Tus respuestas y video fueron guardados. La IA iniciará el análisis de correspondencia con la vacante.</p><button type="button" className="btn btn-primary btn-block py-3" onClick={() => router.push('/candidato/resultados')}>Ver estado del análisis</button></div></div>;
 
   const finished = currentQuestion >= questions.length;
+  const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+  const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
   return (
     <div className="interview-shell soft-interview-shell">
       <div className="interview-heading">
         <div className="interview-heading-top">
           <span className="eyebrow">Entrevista de habilidades blandas</span>
-          <Link href="/candidato/postulaciones" className="btn btn-ghost btn-sm"><ArrowLeftIcon size={16} /> Salir</Link>
         </div>
-        <h1>{vacancyTitle}</h1>
+        <div className="interview-title-row">
+          <h1>{vacancyTitle}</h1>
+          <div className={`interview-timer ${remainingSeconds <= 60 ? 'interview-timer-warning' : ''}`} role="timer" aria-label={`Tiempo restante: ${minutes} minutos y ${seconds} segundos`}>
+            <span>Tiempo restante</span>
+            <strong>{minutes}:{seconds}</strong>
+          </div>
+        </div>
         <p>Responde de forma natural. La cámara permanecerá activa durante toda la entrevista.</p>
       </div>
+      {isTimedOut && !isCompleted && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="alertdialog" aria-modal="true">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="mb-3 text-2xl font-bold text-[var(--ink)]">Entrevista en video incompleta</h2>
+            <p className="mb-5 text-sm leading-6 text-[var(--ink-soft)]">
+              Se agotaron los 25 minutos. La grabación y las respuestas disponibles se guardaron.
+            </p>
+            <button type="button" className="btn btn-accent" onClick={() => router.push('/candidato/resultados')} disabled={isSubmitting}>
+              Continuar
+              <ArrowRightIcon size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="soft-interview-layout">
         <section className="soft-camera-card">

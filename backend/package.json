@@ -17,6 +17,7 @@
     "lint": "oxlint src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:reset-interview": "npm run build && node dist/scripts/reset-interview-test.js",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"

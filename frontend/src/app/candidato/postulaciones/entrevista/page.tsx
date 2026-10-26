@@ -1,13 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  LogoSparkIcon
-} from '../../../../shared/components/ui/Icons';
+import { ArrowRightIcon, LogoSparkIcon } from '../../../../shared/components/ui/Icons';
 import { useAuth } from '../../../../shared/context/AuthContext';
 
 interface ChatMessage {
@@ -25,6 +20,7 @@ interface VacancyContext {
 }
 
 const DEFAULT_VACANCY = 'Entrevista técnica';
+const DEFAULT_TECHNICAL_INTERVIEW_DURATION_SECONDS = 30 * 60;
 
 function InterviewLoading() {
   return (
@@ -46,9 +42,17 @@ function EntrevistaActivaPageContent() {
   const { startTechnicalInterview, submitTechnicalAnswer, completeTechnicalInterview } = useAuth();
   const vacancyId = searchParams.get('vacancyId');
   const vacancyTitle = searchParams.get('vacancy') || DEFAULT_VACANCY;
+  const [dataTreatmentStep, setDataTreatmentStep] = useState<'duration' | 'privacy'>('duration');
+  const [dataTreatmentChecked, setDataTreatmentChecked] = useState(false);
+  const [dataTreatmentAccepted, setDataTreatmentAccepted] = useState(false);
   const [loadedVacancyId, setLoadedVacancyId] = useState<string | null>(null);
   const [vacancy, setVacancy] = useState<VacancyContext | null>(null);
   const [interviewId, setInterviewId] = useState<string | null>(null);
+  const [interviewDeadline, setInterviewDeadline] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(DEFAULT_TECHNICAL_INTERVIEW_DURATION_SECONDS);
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const timeoutCompletionStartedRef = useRef(false);
   const [questions, setQuestions] = useState<Array<{ id: string; category: string; prompt: string; answer: string | null }>>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answer, setAnswer] = useState('');
@@ -58,13 +62,17 @@ function EntrevistaActivaPageContent() {
   const [loadError, setLoadError] = useState('');
 
   React.useEffect(() => {
-    if (!vacancyId) return;
+    if (!vacancyId || !dataTreatmentAccepted) return;
 
     let active = true;
     void startTechnicalInterview(vacancyId)
       .then((interview) => {
         if (!active) return;
         setInterviewId(interview.interviewId);
+        const remaining = interview.remainingSeconds ?? interview.durationSeconds;
+        const startedAt = interview.startedAt ? Date.parse(interview.startedAt) : Date.now();
+        setInterviewDeadline(startedAt + remaining * 1000);
+        setRemainingSeconds(remaining);
         setVacancy({ id: vacancyId, title: interview.vacancy.title, description: '', salary: 0, organization: interview.vacancy.organization });
         setQuestions(interview.questions);
         const firstUnanswered = interview.questions.findIndex((question) => !question.answer);
@@ -87,7 +95,45 @@ function EntrevistaActivaPageContent() {
     return () => {
       active = false;
     };
-  }, [startTechnicalInterview, vacancyId]);
+  }, [dataTreatmentAccepted, startTechnicalInterview, vacancyId]);
+
+  useEffect(() => {
+    if (!vacancyId) router.replace('/candidato/postulaciones');
+  }, [router, vacancyId]);
+
+  useEffect(() => {
+    if (!interviewId) return;
+
+    const preventRestrictedActions = (event: Event) => event.preventDefault();
+    const preventShortcuts = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && ['c', 'v', 'x', 'a'].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+      }
+    };
+    const preventNavigation = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    const keepInterviewActive = () => window.history.pushState(null, '', window.location.href);
+
+    document.addEventListener('copy', preventRestrictedActions);
+    document.addEventListener('cut', preventRestrictedActions);
+    document.addEventListener('paste', preventRestrictedActions);
+    document.addEventListener('contextmenu', preventRestrictedActions);
+    document.addEventListener('keydown', preventShortcuts);
+    window.addEventListener('beforeunload', preventNavigation);
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', keepInterviewActive);
+    return () => {
+      document.removeEventListener('copy', preventRestrictedActions);
+      document.removeEventListener('cut', preventRestrictedActions);
+      document.removeEventListener('paste', preventRestrictedActions);
+      document.removeEventListener('contextmenu', preventRestrictedActions);
+      document.removeEventListener('keydown', preventShortcuts);
+      window.removeEventListener('beforeunload', preventNavigation);
+      window.removeEventListener('popstate', keepInterviewActive);
+    };
+  }, [interviewId, isTimedOut]);
 
   useEffect(() => {
     const chat = chatMessagesRef.current;
@@ -95,21 +141,72 @@ function EntrevistaActivaPageContent() {
     chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (!interviewDeadline || isTimedOut || !interviewId) return;
+
+    const updateRemainingTime = () => {
+      const seconds = Math.max(
+        0,
+        Math.ceil((interviewDeadline - Date.now()) / 1000),
+      );
+      setRemainingSeconds(seconds);
+      if (seconds === 0) setIsTimedOut(true);
+    };
+
+    updateRemainingTime();
+    const timer = window.setInterval(updateRemainingTime, 1000);
+    return () => window.clearInterval(timer);
+  }, [interviewDeadline, interviewId, isTimedOut]);
+
   const handleFinish = async () => {
-    if (!interviewId) return;
+    if (!interviewId || isCompleting) return;
     try {
+      setIsCompleting(true);
       await completeTechnicalInterview(interviewId);
       router.push(`/candidato/postulaciones/entrevista-blanda?vacancyId=${encodeURIComponent(vacancyId || '')}&vacancy=${encodeURIComponent(vacancy?.title || vacancyTitle)}`);
     } catch (requestError) {
       setLoadError(requestError instanceof Error ? requestError.message : 'No fue posible finalizar la entrevista.');
+    } finally {
+      setIsCompleting(false);
     }
   };
+
+  useEffect(() => {
+    if (
+      !isTimedOut ||
+      !interviewId ||
+      isCompleting ||
+      timeoutCompletionStartedRef.current
+    ) return;
+
+    timeoutCompletionStartedRef.current = true;
+    setIsCompleting(true);
+    void completeTechnicalInterview(interviewId)
+      .then(() => setIsTimedOut(true))
+      .catch((requestError) => {
+        setLoadError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'No fue posible guardar la entrevista incompleta.',
+        );
+        setIsTimedOut(false);
+        timeoutCompletionStartedRef.current = false;
+      })
+      .finally(() => setIsCompleting(false));
+  }, [completeTechnicalInterview, interviewId, isCompleting, isTimedOut]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedAnswer = answer.trim();
     const question = questions[currentQuestion];
-    if (!trimmedAnswer || !question || !interviewId || isSubmittingAnswer) return;
+    if (
+      !trimmedAnswer ||
+      !question ||
+      !interviewId ||
+      isSubmittingAnswer ||
+      isTimedOut ||
+      isCompleting
+    ) return;
 
     try {
       setIsSubmittingAnswer(true);
@@ -131,23 +228,113 @@ function EntrevistaActivaPageContent() {
     }
   };
 
-  if (vacancyId && loadedVacancyId !== vacancyId) return <InterviewLoading />;
+  if (!vacancyId) {
+    return <InterviewLoading />;
+  }
+
+  if (!dataTreatmentAccepted) {
+    return (
+      <div className="interview-shell">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="data-treatment-title"
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            {dataTreatmentStep === 'duration' ? (
+              <>
+                <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.08em] text-[var(--purple)]">
+                  Parte 1 de 2 · Antes de comenzar
+                </p>
+                <h1 id="data-treatment-title" className="mb-3 text-2xl font-bold text-[var(--ink)]">
+                  Tiempo necesario para completar el proceso
+                </h1>
+                <p className="mb-5 text-sm leading-6 text-[var(--ink-soft)]">
+                  Para realizar todo el proceso debes contar con aproximadamente 1 hora
+                  y 30 minutos disponibles: 30 minutos para la entrevista técnica y
+                  25 minutos para la entrevista en video.
+                </p>
+                <p className="mb-6 text-sm leading-6 text-[var(--ink-soft)]">
+                  Una vez iniciada la entrevista no podrás salir de ella ni cambiar de
+                  página. Asegúrate de tener una conexión estable y de poder completarla.
+                </p>
+                <div className="flex justify-end">
+                  <button type="button" className="btn btn-accent" onClick={() => setDataTreatmentStep('privacy')}>
+                    Continuar
+                    <ArrowRightIcon size={16} />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.08em] text-[var(--purple)]">
+                  Parte 2 de 2 · Autorización
+                </p>
+                <h1 id="data-treatment-title" className="mb-3 text-2xl font-bold text-[var(--ink)]">
+                  Tratamiento de tus datos personales
+                </h1>
+                <p className="mb-4 text-sm leading-6 text-[var(--ink-soft)]">
+                  Para realizar la entrevista técnica guardaremos tus respuestas y las
+                  analizaremos en relación con los requisitos de la vacante. La información
+                  quedará asociada a tu proceso de selección y podrá ser consultada por la
+                  organización contratante.
+                </p>
+                <p className="mb-5 text-sm leading-6 text-[var(--ink-soft)]">
+                  Puedes consultar nuestra Política de Tratamiento de Datos Personales para
+                  conocer tus derechos y la forma de ejercerlos.
+                </p>
+                <label className="mb-6 flex items-start gap-3 text-sm text-[var(--ink)]">
+                  <input
+                    type="checkbox"
+                    checked={dataTreatmentChecked}
+                    onChange={(event) => setDataTreatmentChecked(event.target.checked)}
+                    className="mt-1 h-4 w-4 accent-[var(--purple)]"
+                  />
+                  <span>
+                    Autorizo el tratamiento de mis datos personales para realizar y evaluar
+                    esta entrevista técnica.
+                  </span>
+                </label>
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                  <button type="button" className="btn btn-ghost" onClick={() => setDataTreatmentStep('duration')}>
+                    Volver
+                  </button>
+                  <button type="button" className="btn btn-accent" disabled={!dataTreatmentChecked} onClick={() => setDataTreatmentAccepted(true)}>
+                    Aceptar y comenzar
+                    <ArrowRightIcon size={16} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadedVacancyId !== vacancyId) return <InterviewLoading />;
 
   if (loadError && !interviewId) {
     return <div className="center-shell"><div className="center-card"><h3 className="text-lg font-bold mb-2">No se pudo cargar la entrevista</h3><p className="text-[var(--red)] text-sm">{loadError}</p></div></div>;
   }
+
+  const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+  const seconds = (remainingSeconds % 60).toString().padStart(2, '0');
 
   return (
     <div className="interview-shell">
       <div className="interview-heading">
         <div className="interview-heading-top">
           <span className="eyebrow">Evaluación técnica con IA</span>
-          <Link href="/candidato/postulaciones" className="btn btn-ghost btn-sm">
-            <ArrowLeftIcon size={16} />
-            Salir
-          </Link>
         </div>
-        <h1>{vacancy?.title || vacancyTitle}</h1>
+        <div className="interview-title-row">
+          <h1>{vacancy?.title || vacancyTitle}</h1>
+          <div className={`interview-timer ${remainingSeconds <= 60 ? 'interview-timer-warning' : ''}`} role="timer" aria-label={`Tiempo restante: ${minutes} minutos y ${seconds} segundos`}>
+            <span>Tiempo restante</span>
+            <strong>{minutes}:{seconds}</strong>
+          </div>
+        </div>
         <p>Responde con calma. Tus respuestas se analizarán en relación con los requisitos de esta vacante.</p>
       </div>
 
@@ -192,7 +379,7 @@ function EntrevistaActivaPageContent() {
           </form>
         ) : (
           <div className="interview-actions">
-            <button type="button" className="btn btn-accent px-6 py-3" onClick={handleFinish}>
+            <button type="button" className="btn btn-accent px-6 py-3" onClick={handleFinish} disabled={isCompleting}>
               Continuar con entrevista en video
               <ArrowRightIcon size={16} />
             </button>
@@ -200,6 +387,23 @@ function EntrevistaActivaPageContent() {
         )}
         <p className="chat-footer-note">Pregunta {Math.min(currentQuestion + 1, questions.length)} de {questions.length} · Entrevista escrita</p>
       </main>
+      {isTimedOut && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="alertdialog" aria-modal="true" aria-labelledby="incomplete-interview-title">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 id="incomplete-interview-title" className="mb-3 text-2xl font-bold text-[var(--ink)]">
+              Entrevista incompleta
+            </h2>
+            <p className="mb-5 text-sm leading-6 text-[var(--ink-soft)]">
+              Se agotaron los 30 minutos. Tus respuestas guardadas se conservaron y
+              la entrevista fue registrada como incompleta.
+            </p>
+            <button type="button" className="btn btn-accent" onClick={() => router.push(`/candidato/postulaciones/entrevista-blanda?vacancyId=${encodeURIComponent(vacancyId || '')}&vacancy=${encodeURIComponent(vacancy?.title || vacancyTitle)}`)}>
+              Continuar
+              <ArrowRightIcon size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

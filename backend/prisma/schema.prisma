@@ -223,6 +223,7 @@ model CandidateApplication {
   interviewAnalysis InterviewAnalysis?
 
   @@unique([candidateId, vacancyId])
+  @@index([candidateId, submittedAt(sort: Desc)])
   @@map("candidate_applications")
 }
 
@@ -264,6 +265,7 @@ model Interview {
   status          InterviewStatus   @default(scheduled)
   scheduledAt     DateTime?
   startedAt       DateTime?
+  remainingSeconds Int?
   completedAt     DateTime?
   summary         String?
   videoUrl        String?

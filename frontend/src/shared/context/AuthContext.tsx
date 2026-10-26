@@ -372,6 +372,9 @@ interface AuthContextType {
   startTechnicalInterview: (vacancyId: string) => Promise<{
     interviewId: string;
     status: string;
+    startedAt: string | null;
+    remainingSeconds: number | null;
+    durationSeconds: number;
     vacancy: { title: string; organization: string };
     questions: Array<{
       id: string;
@@ -383,6 +386,9 @@ interface AuthContextType {
   startBehavioralInterview: (vacancyId: string) => Promise<{
     interviewId: string;
     status: string;
+    startedAt: string | null;
+    remainingSeconds: number | null;
+    durationSeconds: number;
     vacancy: { title: string; organization: string };
     questions: Array<{
       id: string;
@@ -403,7 +409,7 @@ interface AuthContextType {
   ) => Promise<{ id: string; questionId: string; timestampMs: number }>;
   completeTechnicalInterview: (
     interviewId: string,
-  ) => Promise<{ interviewId: string; status: string }>;
+  ) => Promise<{ interviewId: string; status: string; timedOut?: boolean }>;
   uploadInterviewVideo: (
     interviewId: string,
     video: Blob,
