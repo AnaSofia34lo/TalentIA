@@ -6,12 +6,14 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -189,6 +191,39 @@ export class InterviewAnalysisController {
     );
   }
 
+  @Get('recruiter/dashboard/stats')
+  @Roles('recruiter')
+  @ApiOperation({
+    summary: 'Estadísticas del panel de reclutador',
+    description: 'Devuelve métricas reales de vacantes, postulaciones, estados y habilidades para el dashboard.',
+  })
+  @ApiResponse({ status: 200, description: 'Estadísticas consolidadas del dashboard' })
+  @ApiResponse({ status: 401, description: 'JWT ausente, inválido o expirado' })
+  @ApiResponse({ status: 403, description: 'Solo recruiters' })
+  getDashboardStats(
+    @CurrentUser('id') recruiterId: string,
+    @CurrentUser('organizationId') organizationId?: string,
+  ) {
+    return this.analyses.getRecruiterDashboardStats(recruiterId, organizationId);
+  }
+
+  @Get('recruiter/reports')
+  @Roles('recruiter')
+  @ApiOperation({
+    summary: 'Lista reportes de análisis completados de la organización',
+    description:
+      'HU-26. Devuelve postulaciones con InterviewAnalysis.status=completed para alimentar Reportes sin datos mock ni llamadas a Gemini.',
+  })
+  @ApiResponse({ status: 200, description: 'Listado de reportes persistidos' })
+  @ApiResponse({ status: 401, description: 'JWT ausente, inválido o expirado' })
+  @ApiResponse({ status: 403, description: 'Solo recruiters' })
+  listReports(
+    @CurrentUser('id') recruiterId: string,
+    @CurrentUser('organizationId') organizationId?: string,
+  ) {
+    return this.analyses.listRecruiterReports(recruiterId, organizationId);
+  }
+
   @Get('recruiter/applications/:applicationId/interview-analysis')
   @Roles('recruiter')
   @ApiOperation({
@@ -220,8 +255,46 @@ export class InterviewAnalysisController {
   get(
     @CurrentUser('id') recruiterId: string,
     @Param('applicationId') applicationId: string,
+    @CurrentUser('organizationId') organizationId?: string,
   ) {
-    return this.analyses.getRecruiterAnalysis(recruiterId, applicationId);
+    return this.analyses.getRecruiterAnalysis(
+      recruiterId,
+      applicationId,
+      organizationId,
+    );
+  }
+
+  @Get('recruiter/applications/:applicationId/interview-review')
+  @Roles('recruiter')
+  @ApiOperation({
+    summary: 'Detalle de entrevista para evidencias (video/respuestas)',
+    description:
+      'HU-26. Lectura desde DB + URL firmada del video. Query interviewType=technical|behavioral. Sin Gemini.',
+  })
+  @ApiParam({ name: 'applicationId', description: 'UUID de la postulación' })
+  @ApiQuery({
+    name: 'interviewType',
+    required: false,
+    enum: ['technical', 'behavioral'],
+  })
+  @ApiResponse({ status: 200, description: 'Detalle de entrevista de la postulación' })
+  @ApiResponse({ status: 404, description: 'Postulación no encontrada en la organización' })
+  getInterviewReview(
+    @CurrentUser('id') recruiterId: string,
+    @Param('applicationId') applicationId: string,
+    @Query('interviewType') interviewType?: 'technical' | 'behavioral',
+    @CurrentUser('organizationId') organizationId?: string,
+  ) {
+    const type =
+      interviewType === 'technical' || interviewType === 'behavioral'
+        ? interviewType
+        : 'behavioral';
+    return this.analyses.getRecruiterInterviewReview(
+      recruiterId,
+      applicationId,
+      type,
+      organizationId,
+    );
   }
 
 }

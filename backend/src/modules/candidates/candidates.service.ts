@@ -128,6 +128,7 @@ export class CandidatesService {
         vacancyId: true,
         status: true,
         submittedAt: true,
+        matchScore: true,
         vacancy: {
           select: {
             title: true,
@@ -135,6 +136,23 @@ export class CandidatesService {
             salary: true,
             status: true,
             organization: { select: { name: true } },
+          },
+        },
+        interviews: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            videoUrl: true,
+          },
+        },
+        interviewAnalysis: {
+          select: {
+            id: true,
+            status: true,
+            overallScore: true,
+            technicalScore: true,
+            behavioralScore: true,
           },
         },
       },

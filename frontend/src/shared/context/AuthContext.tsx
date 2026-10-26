@@ -10,6 +10,8 @@ import {
   NOTIFS_ADMIN,
   NOTIFS_CAND,
 } from "../data/mockData";
+import { setRecruiterVerified } from "../components/auth/RecruiterAuthGuard";
+import { setCandidateVerified } from "../components/auth/CandidateAuthGuard";
 
 export interface CandidateProfileResponse {
   id: string;
@@ -92,11 +94,136 @@ export interface RecruiterCandidateAnalysisResponse {
     fullName: string;
     email: string;
     phone?: string | null;
-    profile?: { professionalTitle?: string | null; currentCompany?: string | null; yearsOfExperience?: number | null } | null;
+    profile?: {
+      professionalTitle?: string | null;
+      currentCompany?: string | null;
+      yearsOfExperience?: number | null;
+    } | null;
     technicalSkills: Array<{ name: string; estimatedProficiency: number }>;
+    cvFileName?: string | null;
+    cvDownloadUrl?: string | null;
   };
-  application: { id: string; status: string; submittedAt: string; vacancy: { id: string; title: string; organization: string } };
+  application: {
+    id: string;
+    status: string;
+    submittedAt: string;
+    matchScore?: number | null;
+    vacancy: { id: string; title: string; organization: string };
+  };
   analysis: InterviewAnalysisResponse;
+  dofa?: {
+    strengths: string[];
+    opportunities: string[];
+    weaknesses: string[];
+    threats: string[];
+    notes: {
+      weaknesses: string;
+      threats: string;
+      opportunities: string;
+    };
+  };
+  competencies?: {
+    technicalPercentage: number | null;
+    softPercentage: number | null;
+    technicalBars: Array<{
+      name: string;
+      percentage: number;
+      source: string;
+      matched?: boolean;
+    }>;
+  };
+  evidences?: Array<{
+    id: string;
+    competency: string;
+    kind: 'technical' | 'soft' | 'cv' | 'general';
+    summary: string;
+    score: number | null;
+    href: string;
+  }>;
+  interviews?: {
+    technicalId: string | null;
+    behavioralId: string | null;
+    hasVideo: boolean;
+  };
+}
+
+export interface RecruiterReportItem {
+  applicationId: string;
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  initials: string;
+  vacancyId: string;
+  vacancyTitle: string;
+  organization: string;
+  overallScore: number | null;
+  technicalScore: number | null;
+  behavioralScore: number | null;
+  recommendation: string | null;
+  analyzedAt: string | null;
+}
+
+export interface RecruiterInterviewReviewResponse {
+  candidate: { id: string; fullName: string };
+  vacancy: { id: string; title: string };
+  applicationId: string;
+  interview: {
+    id: string;
+    type: string;
+    status: string;
+    videoUrl: string | null;
+    videoDownloadUrl: string | null;
+    answers: Array<{
+      id: string;
+      responseText: string | null;
+      question: { id: string; category: string; prompt: string };
+    }>;
+    markers: Array<{
+      id: string;
+      timestampMs: number;
+      questionId: string;
+      question: { id: string; category: string; prompt: string };
+    }>;
+    questions: Array<{ id: string; category: string; prompt: string }>;
+  } | null;
+}
+
+export interface RecruiterDashboardStats {
+  organizationName: string;
+  totalVacancies: number;
+  activeVacancies: number;
+  totalApplicants: number;
+  completedInterviews: number;
+  averageMatchScore: number;
+  vacanciesBreakdown: Array<{
+    id: string;
+    title: string;
+    applicantCount: number;
+    status: string;
+  }>;
+  statusBreakdown: {
+    applied: number;
+    reviewed: number;
+    interview_scheduled: number;
+    completed: number;
+    rejected: number;
+    hired: number;
+  };
+  topSkills: Array<{
+    name: string;
+    count: number;
+    percentage: number;
+  }>;
+  recentApplications: Array<{
+    applicationId: string;
+    candidateId: string;
+    candidateName: string;
+    candidateEmail: string;
+    vacancyTitle: string;
+    submittedAt: string;
+    status: string;
+    matchScore: number | null;
+  }>;
 }
 
 interface AuthContextType {
@@ -105,6 +232,7 @@ interface AuthContextType {
   candidateProfile: CandidateProfileResponse | null;
   notifications: Notificacion[];
   unreadCount: number;
+  getRecruiterDashboardStats: () => Promise<RecruiterDashboardStats>;
   login: (
     email: string,
     password: string,
@@ -285,6 +413,11 @@ interface AuthContextType {
     applicationId: string,
   ) => Promise<InterviewAnalysisResponse>;
   getRecruiterApplicationAnalysis: (applicationId: string) => Promise<RecruiterCandidateAnalysisResponse>;
+  listRecruiterReports: () => Promise<RecruiterReportItem[]>;
+  getRecruiterInterviewReview: (
+    applicationId: string,
+    interviewType?: 'technical' | 'behavioral',
+  ) => Promise<RecruiterInterviewReviewResponse>;
   runCandidateInterviewAnalysis: (
     applicationId: string,
     force?: boolean,
@@ -374,12 +507,33 @@ async function requestAuth(
   );
 }
 
-async function requestCandidate(path: string, init: RequestInit = {}) {
+let memoryAccessToken: string | null = null;
+let memoryTokenExp = 0;
+
+export function setMemoryAccessToken(token: string | null, expiresAt?: number) {
+  memoryAccessToken = token;
+  memoryTokenExp = expiresAt ? expiresAt * 1000 : (token ? Date.now() + 3600_000 : 0);
+}
+
+async function getAccessToken(): Promise<string> {
+  const now = Date.now();
+  if (memoryAccessToken && now < memoryTokenExp - 10_000) {
+    return memoryAccessToken;
+  }
   const { data } = await supabase.auth.getSession();
-  if (!data.session?.access_token)
+  if (!data.session?.access_token) {
+    memoryAccessToken = null;
     throw new Error("Tu sesión expiró. Inicia sesión nuevamente.");
+  }
+  memoryAccessToken = data.session.access_token;
+  memoryTokenExp = data.session.expires_at ? data.session.expires_at * 1000 : now + 3600_000;
+  return memoryAccessToken;
+}
+
+async function requestCandidate(path: string, init: RequestInit = {}) {
+  const token = await getAccessToken();
   const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${data.session.access_token}`);
+  headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !(init.body instanceof FormData))
     headers.set("Content-Type", "application/json");
   return parseResponse(
@@ -388,11 +542,9 @@ async function requestCandidate(path: string, init: RequestInit = {}) {
 }
 
 async function requestApi(path: string, init: RequestInit = {}) {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session?.access_token)
-    throw new Error("Tu sesión expiró. Inicia sesión nuevamente.");
+  const token = await getAccessToken();
   const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${data.session.access_token}`);
+  headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !(init.body instanceof FormData))
     headers.set("Content-Type", "application/json");
   return parseResponse(await fetch(`${API_URL}/${path}`, { ...init, headers }));
@@ -411,19 +563,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [bancoFilter, setBancoFilter] = useState<string>(
     "Desarrollo de Software",
   );
+  const hydratingRef = React.useRef(false);
 
   const hydrateCandidate = async () => {
+    if (hydratingRef.current) return;
+    hydratingRef.current = true;
     try {
       const profile = await requestCandidate("profile");
       setCandidateProfile(profile);
       return profile;
     } catch {
       return null;
+    } finally {
+      hydratingRef.current = false;
     }
   };
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setMemoryAccessToken(data.session.access_token, data.session.expires_at);
+      }
       const role = data.session?.user.app_metadata?.role as string | undefined;
       const normalizedRole = role === "admin" ? "recruiter" : role;
       if (normalizedRole === "recruiter" || normalizedRole === "candidate") {
@@ -434,6 +594,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        setMemoryAccessToken(session?.access_token ?? null, session?.expires_at);
         const role = session?.user.app_metadata?.role as string | undefined;
         const normalizedRole = role === "admin" ? "recruiter" : role;
         setSessionRole(
@@ -686,6 +847,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) as Promise<RecruiterCandidateAnalysisResponse>;
   };
 
+  const getRecruiterDashboardStats = async () => {
+    return requestApi('recruiter/dashboard/stats') as Promise<RecruiterDashboardStats>;
+  };
+
+  const listRecruiterReports = async () => {
+    return requestApi('recruiter/reports') as Promise<RecruiterReportItem[]>;
+  };
+
+  const getRecruiterInterviewReview = async (
+    applicationId: string,
+    interviewType: 'technical' | 'behavioral' = 'behavioral',
+  ) => {
+    const query = interviewType ? `?interviewType=${interviewType}` : '';
+    return requestApi(
+      `recruiter/applications/${applicationId}/interview-review${query}`,
+    ) as Promise<RecruiterInterviewReviewResponse>;
+  };
+
   const getTechnicalTestAccess = async (applicationId: string) => {
     return requestApi(
       `candidate/applications/${applicationId}/technical-test-access`,
@@ -729,6 +908,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    setMemoryAccessToken(null);
+    setRecruiterVerified(false);
+    setCandidateVerified(false);
     await supabase.auth.signOut();
     setSessionRole(null);
     setCandidateProfile(null);
@@ -781,6 +963,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getCandidateInterviewAnalysis,
         runCandidateInterviewAnalysis,
         getRecruiterApplicationAnalysis,
+        getRecruiterDashboardStats,
+        listRecruiterReports,
+        getRecruiterInterviewReview,
         getTechnicalTestAccess,
         logout,
         markAllNotifsRead,
