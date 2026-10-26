@@ -339,6 +339,22 @@ Authorization: Bearer <access_token>
 Swagger documenta el parámetro `vacancyId`, las respuestas `200`, `401`, `403` y
 `404`, y un ejemplo con ranking y lista completa.
 
+### HU-19 / HU-23 / HU-24: Resumen y explicación para recruiter
+
+El análisis de entrevistas IA persiste un resumen técnico y otro de habilidades
+blandas, además de fortalezas, oportunidades de mejora, recomendación y puntajes
+por componente. Estos datos permiten explicar el `overallScore` sin presentar la
+calificación como una decisión automática definitiva.
+
+El recruiter puede consultar:
+
+- `GET /recruiter/applications/:applicationId/interview-analysis`: resumen y explicación de una postulación específica.
+
+Ambos endpoints validan JWT, rol `recruiter` y pertenencia a la misma organización.
+La respuesta identifica explícitamente candidato, vacante y postulación, e incluye `scoreExplanation` con `technical`, `behavioral`,
+`positiveFactors` e `improvementFactors`. Si las entrevistas aún no están completas,
+devuelve el estado `not_available` y no inventa una explicación.
+
 ## Seguridad
 
 - JWT de Supabase validado en cada request protegido
