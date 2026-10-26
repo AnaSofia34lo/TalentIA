@@ -21,6 +21,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
+En producción, las variables `NEXT_PUBLIC_*` deben configurarse en el proveedor
+de despliegue y no en el repositorio. `NEXT_PUBLIC_API_URL` debe apuntar a la URL
+HTTPS pública del backend, por ejemplo `https://talentia-api.onrender.com`.
+Después de cambiarla es necesario crear un nuevo despliegue porque Next.js las
+incluye durante el build.
+
 ## HU-01: Registrar cuenta
 
 El flujo de candidato permite crear una cuenta mediante `POST /auth/register`.

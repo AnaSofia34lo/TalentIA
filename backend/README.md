@@ -93,6 +93,16 @@ Ejemplo de solicitud:
 }
 ```
 
+## Despliegue en producción
+
+El archivo `../render.yaml` configura el servicio NestJS en Render. El despliegue
+ejecuta `npx prisma migrate deploy` antes de iniciar la aplicación y utiliza la
+conexión transaccional de `DATABASE_URL`; `DIRECT_URL` se conserva para Prisma.
+
+En Render configura también `FRONTEND_URL` con el dominio público del frontend.
+Puede contener varios orígenes separados por coma. CORS queda restringido a esos
+orígenes cuando la variable existe.
+
 El endpoint valida correo, campos obligatorios, mínimo de ocho caracteres, mayúscula,
 minúscula, número, carácter especial y coincidencia de contraseñas. Devuelve `409` si
 el correo ya existe. La respuesta contiene `role: recruiter`, `organizationId`, el JWT
