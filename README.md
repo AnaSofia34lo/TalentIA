@@ -72,6 +72,13 @@ no forma parte de las HU-01 a HU-13 implementadas en esta entrega.
 - [Backend](backend/README.md): API, autenticación, persistencia, IA y Swagger.
 - [Frontend](frontend/README.md): pantallas, flujos de usuario e integración con la API.
 
+### HU-20 y HU-25
+
+El recruiter puede seleccionar una vacante desde `/admin/banco` y consultar en una
+misma vista todos sus candidatos postulados. La lista se ordena por compatibilidad y
+los tres primeros se resaltan con oro, plata y bronce. El backend expone y documenta
+`GET /vacancies/:vacancyId/applications` en Swagger.
+
 ## Ejecución rápida
 
 ```bash
