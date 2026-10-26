@@ -8,12 +8,6 @@ import { EstadoBadge } from "../../../shared/components/ui/Badge";
 import { MatchRing } from "../../../shared/components/ui/MatchRing";
 
 type VacancyOption = { id: string; name: string; status: string };
-const medalLabel: Record<string, string> = {
-  gold: "",
-  silver: "",
-  bronze: "",
-};
-
 function statusLabel(status: string) {
   if (status === "applied" || status === "pending") return "Postulado";
   if (status === "reviewed") return "En revisión";
@@ -174,10 +168,8 @@ export default function AdminBancoPage() {
                     className={`rank-card ${candidate.medal === "gold" ? "top1" : candidate.medal === "silver" ? "top2" : "top3"}`}
                   >
                     <div className="rank-num">{candidate.rank}</div>
-                    <div className="text-2xl my-1">
-                      {candidate.medal
-                        ? medalLabel[candidate.medal].split(" ")[0]
-                        : "•"}
+                    <div className="text-2xl my-1" aria-hidden="true">
+                      •
                     </div>
                     <div className="avatar my-2 mx-auto">
                       {initials(candidate.fullName)}
@@ -188,12 +180,9 @@ export default function AdminBancoPage() {
                     <div className="flex justify-center my-2">
                       <MatchRing percentage={candidate.score} size={56} />
                     </div>
-                    <p className="text-xs font-semibold mb-2">
-                      {medalLabel[candidate.medal ?? ""]}
-                    </p>
                     <EstadoBadge estado={statusLabel(candidate.status)} />
                     <Link
-                      href={`/admin/candidatos/${candidate.candidateId}`}
+                      href={`/admin/candidatos/${candidate.candidateId}?applicationId=${encodeURIComponent(candidate.applicationId)}&vacancyId=${encodeURIComponent(selectedVacancyId)}`}
                       className="btn btn-outline btn-sm btn-block mt-3"
                     >
                       Ver perfil
@@ -256,7 +245,7 @@ export default function AdminBancoPage() {
                         </td>
                         <td>
                           <Link
-                            href={`/admin/candidatos/${candidate.candidateId}`}
+                            href={`/admin/candidatos/${candidate.candidateId}?applicationId=${encodeURIComponent(candidate.applicationId)}&vacancyId=${encodeURIComponent(selectedVacancyId)}`}
                             className="btn btn-outline btn-sm"
                           >
                             Ver perfil

@@ -58,6 +58,12 @@ export interface InterviewAnalysisResponse {
   strengths: string[];
   improvements: string[];
   recommendation: string | null;
+  scoreExplanation?: {
+    technical: string | null;
+    behavioral: string | null;
+    positiveFactors: string[];
+    improvementFactors: string[];
+  };
   failureReason: string | null;
   analyzedAt: string | null;
   interviewsReady?: boolean;
@@ -78,6 +84,19 @@ export interface TechnicalTestAccessResponse {
   message: string;
   vacancyTitle: string;
   evaluatedAt: string | null;
+}
+
+export interface RecruiterCandidateAnalysisResponse {
+  candidate: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string | null;
+    profile?: { professionalTitle?: string | null; currentCompany?: string | null; yearsOfExperience?: number | null } | null;
+    technicalSkills: Array<{ name: string; estimatedProficiency: number }>;
+  };
+  application: { id: string; status: string; submittedAt: string; vacancy: { id: string; title: string; organization: string } };
+  analysis: InterviewAnalysisResponse;
 }
 
 interface AuthContextType {
@@ -265,6 +284,7 @@ interface AuthContextType {
   getCandidateInterviewAnalysis: (
     applicationId: string,
   ) => Promise<InterviewAnalysisResponse>;
+  getRecruiterApplicationAnalysis: (applicationId: string) => Promise<RecruiterCandidateAnalysisResponse>;
   runCandidateInterviewAnalysis: (
     applicationId: string,
     force?: boolean,
@@ -660,6 +680,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) as Promise<InterviewAnalysisResponse>;
   };
 
+  const getRecruiterApplicationAnalysis = async (applicationId: string) => {
+    return requestApi(
+      `recruiter/applications/${applicationId}/interview-analysis`,
+    ) as Promise<RecruiterCandidateAnalysisResponse>;
+  };
+
   const getTechnicalTestAccess = async (applicationId: string) => {
     return requestApi(
       `candidate/applications/${applicationId}/technical-test-access`,
@@ -754,6 +780,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         listInterviewAnalyses,
         getCandidateInterviewAnalysis,
         runCandidateInterviewAnalysis,
+        getRecruiterApplicationAnalysis,
         getTechnicalTestAccess,
         logout,
         markAllNotifsRead,

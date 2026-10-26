@@ -141,6 +141,16 @@ lugar el ranking IA y la tabla completa de candidatos postulados. El primer,
 segundo y tercer candidato se resaltan con medallas de oro, plata y bronce; el
 resto aparece en la lista normal ordenada por puntaje.
 
+## HU-19, HU-23 y HU-24: Resumen y explicación para recruiter
+
+Desde el enlace `Ver perfil` del banco de candidatos, el recruiter consulta el
+perfil asociado a la postulación concreta (`applicationId`) y a la vacante
+seleccionada; el mismo candidato puede abrirse de forma independiente para
+cada vacante. El recruiter consulta el resumen real generado por IA: puntaje técnico, puntaje de habilidades blandas,
+puntaje general, resumen de cada entrevista, fortalezas, factores de mejora y
+recomendación. La vista explica el puntaje mediante `scoreExplanation` y muestra
+un aviso cuando las entrevistas todavía no están listas para análisis.
+
 ## Fuera del alcance actual
 
 La interfaz contiene vistas preparadas para ampliar candidatos, entrevistas y reportes,
