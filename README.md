@@ -14,23 +14,29 @@ TalentIA es una plataforma para gestión de contratación con foco en automatiza
 - Seguridad: JWT de Supabase
 - Documentación: Swagger
 
+## Backend Desplegado
+
+El backend y Swagger Api Docs se encuentra desplegado en la aplicación web:
+
+https://talentia-api.onrender.com/api/docs
+
 ## Estado de las historias de usuario
 
-| Historia | Capacidad | Estado actual |
-| --- | --- | --- |
-| HU-01 | Registro de candidatos | Implementada |
-| HU-02 | Inicio de sesión | Implementada |
-| HU-03 | Información personal del candidato | Implementada |
-| HU-04 | Carga de hoja de vida en PDF | Implementada |
-| HU-05 | Registro de experiencia laboral | Implementada |
-| HU-06 | Extracción de experiencia laboral con IA | Implementada |
-| HU-07 | Identificación de certificaciones | Backend implementado; visualización dedicada pendiente |
-| HU-08 | Skills técnicas y Match IA trazable | Implementada |
-| HU-09 | Nombre de la vacante | Implementada |
-| HU-10 | Descripción del cargo | Implementada |
-| HU-11 | Salario de la vacante | Implementada |
-| HU-12 | Competencias técnicas de la vacante | Implementada |
-| HU-13 | Cambio de estado de la vacante | Implementada |
+| Historia | Capacidad                                | Estado actual                                          |
+| -------- | ---------------------------------------- | ------------------------------------------------------ |
+| HU-01    | Registro de candidatos                   | Implementada                                           |
+| HU-02    | Inicio de sesión                         | Implementada                                           |
+| HU-03    | Información personal del candidato       | Implementada                                           |
+| HU-04    | Carga de hoja de vida en PDF             | Implementada                                           |
+| HU-05    | Registro de experiencia laboral          | Implementada                                           |
+| HU-06    | Extracción de experiencia laboral con IA | Implementada                                           |
+| HU-07    | Identificación de certificaciones        | Backend implementado; visualización dedicada pendiente |
+| HU-08    | Skills técnicas y Match IA trazable      | Implementada                                           |
+| HU-09    | Nombre de la vacante                     | Implementada                                           |
+| HU-10    | Descripción del cargo                    | Implementada                                           |
+| HU-11    | Salario de la vacante                    | Implementada                                           |
+| HU-12    | Competencias técnicas de la vacante      | Implementada                                           |
+| HU-13    | Cambio de estado de la vacante           | Implementada                                           |
 
 ### Candidato
 
@@ -103,4 +109,3 @@ con NestJS y `talentia-web` con Next.js. En Render crea un Blueprint desde el
 repositorio y completa las variables marcadas con `sync: false`. Usa en el
 frontend la URL HTTPS pública del backend y en `FRONTEND_URL` la URL HTTPS pública
 del frontend. Nunca subas archivos `.env` ni credenciales al repositorio.
-

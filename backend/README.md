@@ -15,6 +15,12 @@ Este backend implementa la base técnica para TalentIA siguiendo arquitectura li
 - Swagger
 - CORS
 
+## Backend Desplegado
+
+El backend y Swagger Api Docs se encuentra desplegado en la aplicación web:
+
+https://talentia-api.onrender.com/api/docs
+
 ## Variables de entorno
 
 Copia `.env.example` a `.env` y configura los valores reales de Supabase. No uses claves de
