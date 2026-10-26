@@ -133,6 +133,14 @@ estado del análisis, porcentaje general, fortalezas, oportunidades de mejora y 
 recomendación general cuando estén disponibles. Mientras Gemini procesa el resultado,
 la pantalla muestra un estado de espera; no inventa resultados locales.
 
+## HU-20 y HU-25: Candidatos y ranking por vacante
+
+Desde `/admin/banco`, el recruiter selecciona una vacante real de su organización.
+La vista consulta `GET /vacancies/:vacancyId/applications` y muestra en el mismo
+lugar el ranking IA y la tabla completa de candidatos postulados. El primer,
+segundo y tercer candidato se resaltan con medallas de oro, plata y bronce; el
+resto aparece en la lista normal ordenada por puntaje.
+
 ## Fuera del alcance actual
 
 La interfaz contiene vistas preparadas para ampliar candidatos, entrevistas y reportes,

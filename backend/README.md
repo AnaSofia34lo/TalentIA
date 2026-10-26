@@ -317,6 +317,28 @@ uso de IA, el video se descarga solo desde el bucket privado de Supabase, se lim
 `MAX_AI_VIDEO_BYTES` (20 MB por defecto) y no se evalúan atributos sensibles. Se
 evalúan exclusivamente respuestas, competencias observables y requisitos del cargo.
 
+### HU-20 / HU-25: Candidatos y ranking por vacante
+
+`GET /vacancies/:vacancyId/applications` requiere JWT válido y rol `recruiter`.
+La vacante se valida contra la organización del recruiter, evitando consultar
+postulantes de otra empresa. La respuesta contiene todos los candidatos, su
+postulación, perfil, estado y `score`, además de `ranking` con los tres primeros.
+
+El score prioriza el `overallScore` del análisis de entrevistas IA; si todavía no
+existe, usa el `matchScore` almacenado y finalmente calcula la compatibilidad con
+las habilidades técnicas extraídas del CV. Cada elemento incluye `rank` y `medal`:
+`gold` para el primero, `silver` para el segundo y `bronze` para el tercero.
+
+Ejemplo:
+
+```http
+GET /vacancies/4bd3f7f1-1d8c-4e4d-9f78-fb4fb3cc90ef/applications
+Authorization: Bearer <access_token>
+```
+
+Swagger documenta el parámetro `vacancyId`, las respuestas `200`, `401`, `403` y
+`404`, y un ejemplo con ranking y lista completa.
+
 ## Seguridad
 
 - JWT de Supabase validado en cada request protegido

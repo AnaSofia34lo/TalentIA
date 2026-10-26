@@ -184,6 +184,12 @@ interface AuthContextType {
       }>;
     }>
   >;
+  listVacancyApplicants: (vacancyId: string) => Promise<{
+    vacancy: { id: string; name: string; description: string; status: string; organization: string };
+    totalCandidates: number;
+    ranking: VacancyApplicant[];
+    candidates: VacancyApplicant[];
+  }>;
   listAvailableVacancies: () => Promise<
     Array<{
       id: string;
@@ -279,6 +285,27 @@ interface AuthResponse {
   access_token: string;
   refresh_token: string;
   user: { role: UserRole; email?: string };
+}
+
+export interface VacancyApplicant {
+  applicationId: string;
+  candidateId: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  submittedAt: string;
+  status: string;
+  score: number;
+  scoreSource: 'interview_ai' | 'stored_match' | 'cv_skills';
+  rank: number;
+  medal: 'gold' | 'silver' | 'bronze' | null;
+  interviewAnalysis?: {
+    status: string;
+    technicalScore: number | null;
+    behavioralScore: number | null;
+    overallScore: number | null;
+  } | null;
+  profile?: { professionalTitle?: string | null; currentCompany?: string | null } | null;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -530,6 +557,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return requestApi("vacancies");
   };
 
+  const listVacancyApplicants = async (vacancyId: string) => {
+    return requestApi(`vacancies/${vacancyId}/applications`) as Promise<{
+      vacancy: { id: string; name: string; description: string; status: string; organization: string };
+      totalCandidates: number;
+      ranking: VacancyApplicant[];
+      candidates: VacancyApplicant[];
+    }>;
+  };
+
   const listAvailableVacancies = async () => {
     return requestApi("vacancies/available");
   };
@@ -704,6 +740,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         generateInterviewQuestions,
         updateVacancy,
         listVacancies,
+        listVacancyApplicants,
         listAvailableVacancies,
         applyToVacancy,
         listCandidateApplications,
