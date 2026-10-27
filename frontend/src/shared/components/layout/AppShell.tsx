@@ -39,7 +39,7 @@ const NOTIF_COLOR_MAP: Record<string, [string, string]> = {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { role, user, notifications, unreadCount, logout, markAllNotifsRead } = useAuth();
+  const { role, user, candidateProfile, notifications, unreadCount, logout, markAllNotifsRead } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -66,6 +66,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (path === '/candidato/postulaciones' && pathname.startsWith('/candidato/postulaciones')) return true;
     return pathname === path;
   };
+
+  if (role === 'candidate' && !candidateProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-[var(--ink-soft)]">
+        Cargando tu perfil...
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">

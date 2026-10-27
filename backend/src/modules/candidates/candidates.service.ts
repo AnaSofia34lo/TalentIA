@@ -21,7 +21,13 @@ export class CandidatesService {
 
   async getProfile(userId: string) {
     const user = await this.getCandidate(userId);
-    return this.toProfileResponse(user);
+    const identityDocument = await this.prisma.storageAsset.findFirst({
+      where: { userId, kind: 'identity_document' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true },
+    });
+    const profile = this.toProfileResponse(user);
+    return { ...profile, identityDocument };
   }
 
   async updateProfile(userId: string, dto: UpdateCandidateProfileDto) {
@@ -54,19 +60,27 @@ export class CandidatesService {
       user_metadata: { fullName: updated.fullName },
     });
 
-    return this.toProfileResponse({ ...updated, candidateProfile: profile });
+    return this.getProfile(userId);
   }
 
   async getCv(userId: string) {
     const user = await this.getCandidate(userId);
     const profile = user.candidateProfile;
-    const asset = await this.prisma.storageAsset.findFirst({
-      where: { userId, kind: 'cv' },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [asset, identityDocument] = await Promise.all([
+      this.prisma.storageAsset.findFirst({
+        where: { userId, kind: 'cv' },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.storageAsset.findFirst({
+        where: { userId, kind: 'identity_document' },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true },
+      }),
+    ]);
 
     return {
       ...this.toProfileResponse(user),
+      identityDocument,
       cv: asset
         ? {
             id: asset.id,
@@ -128,6 +142,7 @@ export class CandidatesService {
         vacancyId: true,
         status: true,
         submittedAt: true,
+        matchScore: true,
         vacancy: {
           select: {
             title: true,
@@ -135,6 +150,23 @@ export class CandidatesService {
             salary: true,
             status: true,
             organization: { select: { name: true } },
+          },
+        },
+        interviews: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            videoUrl: true,
+          },
+        },
+        interviewAnalysis: {
+          select: {
+            id: true,
+            status: true,
+            overallScore: true,
+            technicalScore: true,
+            behavioralScore: true,
           },
         },
       },
@@ -203,6 +235,71 @@ export class CandidatesService {
       message: 'Hoja de vida cargada correctamente',
       fileName: asset.fileName,
       downloadUrl: await this.createDownloadUrl(asset.fileUrl),
+    };
+  }
+
+  async uploadIdentityDocument(userId: string, file?: Express.Multer.File) {
+    await this.getCandidate(userId);
+    if (!file) throw new BadRequestException('El documento de identidad es obligatorio.');
+    const allowedTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
+    if (!allowedTypes.has(file.mimetype)) {
+      throw new BadRequestException('El documento debe ser PDF o imagen JPG, PNG o WEBP.');
+    }
+
+    const bucket = this.supabase.getBucketName('identity-document');
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${userId}/${randomUUID()}-${safeName}`;
+    const { error } = await this.supabase
+      .getClient()
+      .storage.from(bucket)
+      .upload(path, file.buffer, { contentType: file.mimetype, upsert: false });
+    if (error) throw new BadRequestException(`No se pudo cargar el documento: ${error.message}`);
+
+    const asset = await this.prisma.storageAsset.create({
+      data: {
+        userId,
+        bucketName: bucket,
+        fileName: file.originalname,
+        fileUrl: path,
+        mimeType: file.mimetype,
+        kind: 'identity_document',
+        sizeBytes: file.size,
+      },
+      select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true },
+    });
+    return { message: 'Documento de identidad cargado correctamente.', identityDocument: asset };
+  }
+
+  async getRecruiterIdentityDocument(recruiterId: string, applicationId: string) {
+    const recruiter = await this.prisma.user.findUnique({
+      where: { id: recruiterId },
+      select: { organizationId: true },
+    });
+    if (!recruiter?.organizationId) {
+      throw new NotFoundException('El recruiter no tiene una organizacion asociada.');
+    }
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: { id: applicationId, organizationId: recruiter.organizationId },
+      select: { candidateId: true, candidate: { select: { fullName: true } } },
+    });
+    if (!application) throw new NotFoundException('La postulacion no pertenece a tu organizacion.');
+
+    const asset = await this.prisma.storageAsset.findFirst({
+      where: { userId: application.candidateId, kind: 'identity_document' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!asset) throw new NotFoundException('El candidato aun no ha cargado su documento de identidad.');
+    const { data, error } = await this.supabase
+      .getClient()
+      .storage.from(asset.bucketName)
+      .createSignedUrl(asset.fileUrl, 300);
+    if (error) throw new BadRequestException('No se pudo generar el acceso al documento.');
+    return {
+      candidateName: application.candidate.fullName,
+      fileName: asset.fileName,
+      mimeType: asset.mimeType,
+      downloadUrl: data.signedUrl,
+      expiresInSeconds: 300,
     };
   }
 

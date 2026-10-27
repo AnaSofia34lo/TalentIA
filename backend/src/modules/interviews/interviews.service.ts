@@ -11,6 +11,14 @@ import type { SubmitInterviewAnswerDto } from './dto/submit-interview-answer.dto
 import type { MarkVideoQuestionDto } from './dto/mark-video-question.dto.js';
 import { InterviewAnalysisService } from '../interview-analysis/interview-analysis.service.js';
 
+const DEFAULT_TECHNICAL_INTERVIEW_SECONDS = 30 * 60;
+const DEFAULT_BEHAVIORAL_INTERVIEW_SECONDS = 25 * 60;
+
+function configuredDuration(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
 @Injectable()
 export class InterviewsService {
   constructor(
@@ -32,6 +40,7 @@ export class InterviewsService {
     dto: StartTechnicalInterviewDto,
     type: 'technical' | 'behavioral',
   ) {
+    const durationSeconds = this.getDurationSeconds(type);
     const application = await this.prisma.candidateApplication.findFirst({
       where: { candidateId, vacancyId: dto.vacancyId },
       include: {
@@ -68,7 +77,19 @@ export class InterviewsService {
     }
 
     const existing = application.interviews[0];
-    if (existing) return this.serialize(existing, application.vacancy);
+    if (existing) {
+      return this.serialize(existing, application.vacancy);
+    }
+
+    const identityDocument = await this.prisma.storageAsset.findFirst({
+      where: { userId: candidateId, kind: 'identity_document' },
+      select: { id: true },
+    });
+    if (!identityDocument) {
+      throw new BadRequestException(
+        'Debes subir tu documento de identidad en tu perfil antes de iniciar la entrevista.',
+      );
+    }
 
     const interview = await this.prisma.interview.create({
       data: {
@@ -78,6 +99,7 @@ export class InterviewsService {
         type,
         status: 'in_progress',
         startedAt: new Date(),
+        remainingSeconds: durationSeconds,
         questions: {
           create: application.vacancy.interviewQuestions.map((question) => ({
             category: question.category,
@@ -157,18 +179,28 @@ export class InterviewsService {
     });
     if (!interview)
       throw new NotFoundException('La entrevista no está disponible.');
+    const interviewDeadline = interview.startedAt
+      ? interview.startedAt.getTime() +
+        this.getDurationSeconds(interview.type) * 1000
+      : null;
+    const timedOut =
+      interviewDeadline !== null && Date.now() >= interviewDeadline;
+
     if (
       interview.type === 'technical' &&
-      interview.answers.length < interview.questions.length
+      interview.answers.length < interview.questions.length &&
+      !timedOut
     ) {
       throw new BadRequestException(
         'Debes responder todas las preguntas antes de finalizar.',
       );
     }
+
     if (
       interview.type === 'behavioral' &&
       (!interview.videoUrl ||
-        interview.videoMarkers.length < interview.questions.length)
+        interview.videoMarkers.length < interview.questions.length) &&
+      !timedOut
     ) {
       throw new BadRequestException(
         'Debes completar la grabación y marcar todas las preguntas antes de finalizar.',
@@ -192,7 +224,7 @@ export class InterviewsService {
     if (interview.type === 'behavioral' || interview.type === 'technical') {
       void this.interviewAnalysis.analyzeForCompletion(interview.applicationId);
     }
-    return { interviewId, status: 'completed' };
+    return { interviewId, status: 'completed', timedOut };
   }
 
   async markVideoQuestion(
@@ -303,6 +335,9 @@ export class InterviewsService {
     interview: {
       id: string;
       status: string;
+      type: string;
+      startedAt: Date | null;
+      remainingSeconds: number | null;
       questions: Array<{ id: string; category: string; prompt: string }>;
       answers: Array<{ questionId: string; responseText: string | null }>;
     },
@@ -311,6 +346,9 @@ export class InterviewsService {
     return {
       interviewId: interview.id,
       status: interview.status,
+      durationSeconds: this.getDurationSeconds(interview.type),
+      startedAt: interview.startedAt?.toISOString() ?? null,
+      remainingSeconds: interview.remainingSeconds,
       vacancy: {
         title: vacancy.title,
         organization: vacancy.organization.name,
@@ -324,5 +362,17 @@ export class InterviewsService {
             ?.responseText ?? null,
       })),
     };
+  }
+
+  private getDurationSeconds(type: string): number {
+    return type === 'technical'
+      ? configuredDuration(
+          'TECHNICAL_INTERVIEW_DURATION_SECONDS',
+          DEFAULT_TECHNICAL_INTERVIEW_SECONDS,
+        )
+      : configuredDuration(
+          'BEHAVIORAL_INTERVIEW_DURATION_SECONDS',
+          DEFAULT_BEHAVIORAL_INTERVIEW_SECONDS,
+        );
   }
 }

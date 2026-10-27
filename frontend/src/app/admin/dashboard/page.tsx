@@ -1,24 +1,101 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BriefcaseIcon,
   VideoIcon,
   AwardIcon,
   PlusIcon,
-  TrendUpIcon,
-  TrendDownIcon,
   UserIcon,
+  ArrowRightIcon,
+  LogoSparkIcon,
 } from "../../../shared/components/ui/Icons";
+import {
+  RecruiterDashboardStats,
+  useAuth,
+} from "../../../shared/context/AuthContext";
 
 export default function AdminDashboardPage() {
+  const { user, getRecruiterDashboardStats } = useAuth();
+  const [stats, setStats] = useState<RecruiterDashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const data = await getRecruiterDashboardStats();
+        if (active) setStats(data);
+      } catch (err) {
+        if (active) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "No fue posible cargar las estadísticas del dashboard.",
+          );
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const recruiterFirstName =
+    user.name?.trim().split(/\s+/)[0] || "Reclutador";
+
+  const totalApplicants = stats?.totalApplicants ?? 0;
+  const activeVacancies = stats?.activeVacancies ?? 0;
+  const totalVacancies = stats?.totalVacancies ?? 0;
+  const completedInterviews = stats?.completedInterviews ?? 0;
+  const avgMatch = stats?.averageMatchScore ?? 0;
+  const orgName = stats?.organizationName || "Tu Organización";
+
+  // Cálculos para gráfico de barras por vacante
+  const vacancies = stats?.vacanciesBreakdown ?? [];
+  const maxApplicantCount = Math.max(
+    1,
+    ...vacancies.map((v) => v.applicantCount),
+  );
+
+  // Cálculos para donut de estados de candidatos
+  const status = stats?.statusBreakdown ?? {
+    applied: 0,
+    reviewed: 0,
+    interview_scheduled: 0,
+    completed: 0,
+    rejected: 0,
+    hired: 0,
+  };
+
+  const inEvaluation = status.applied + status.reviewed;
+  const inInterview = status.interview_scheduled;
+  const approved = status.completed + status.hired;
+  const rejected = status.rejected;
+
+  const pctEval = totalApplicants ? Math.round((inEvaluation / totalApplicants) * 100) : 0;
+  const pctInterview = totalApplicants ? Math.round((inInterview / totalApplicants) * 100) : 0;
+  const pctApproved = totalApplicants ? Math.round((approved / totalApplicants) * 100) : 0;
+  const pctRejected = totalApplicants ? Math.max(0, 100 - pctEval - pctInterview - pctApproved) : 0;
+
+  const donutGradient = totalApplicants > 0
+    ? `conic-gradient(var(--navy) 0% ${pctEval}%, var(--purple) ${pctEval}% ${pctEval + pctInterview}%, var(--green) ${pctEval + pctInterview}% ${pctEval + pctInterview + pctApproved}%, var(--red) ${pctEval + pctInterview + pctApproved}% 100%)`
+    : "conic-gradient(#e2e8f0 0% 100%)";
+
   return (
     <div>
       {/* Page Header */}
       <div className="page-head">
         <div>
-          <h1 className="page-title">Buenos días, Ana</h1>
+          <h1 className="page-title">Buenos días, {recruiterFirstName}</h1>
           <p className="page-sub">
-            Esto es lo que está pasando en tus procesos de selección hoy.
+            Métricas reales de selección y estado del talento en {orgName}.
           </p>
         </div>
         <Link href="/admin/vacantes/crear" className="btn btn-accent">
@@ -27,7 +104,16 @@ export default function AdminDashboardPage() {
         </Link>
       </div>
 
-      {/* Hero DS4B Banner */}
+      {error && (
+        <div
+          className="rounded-lg bg-[var(--red-tint)] text-[var(--red)] text-sm p-3 mb-4"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
+      {/* Hero Banner */}
       <div
         className="card relative overflow-hidden text-white p-8 md:p-9 mb-6 border-0"
         style={{ background: "var(--grad-brand)" }}
@@ -41,43 +127,44 @@ export default function AdminDashboardPage() {
           <div className="max-w-[640px]">
             <span
               className="badge mb-3.5 inline-flex items-center"
-              style={{ background: "rgba(255, 255, 255, 0.16)", color: "#fff" }}
+              style={{
+                background: "rgba(255, 255, 255, 0.16)",
+                color: "#fff",
+              }}
             >
               <span className="badge-dot" />
-              TalentIA para DS4B — Digital Solution for Business
+              TalentIA para {orgName}
             </span>
             <h2 className="text-white text-xl md:text-2xl font-bold leading-snug mb-2.5">
-              Selección de talento impulsada por IA, hecha a la medida de DS4B
+              Selección de talento impulsada por IA con evidencia real
             </h2>
             <p className="text-white/80 text-sm leading-relaxed">
-              TalentIA analiza hojas de vida, conduce entrevistas en vivo y
-              evalúa aptitudes reales — no solo experiencia — para los 4
-              perfiles clave que DS4B contrata de forma continua: Desarrollo de
-              Software, Datos e IA, Levantamiento de Requisitos y Gestión de
-              Proyectos. La IA acelera el análisis; la decisión final siempre es
-              de tu equipo de Recursos Humanos.
+              TalentIA analiza hojas de vida, conduce entrevistas técnicas y
+              conductuales, y calcula el porcentaje de afinidad para cada vacante
+              activa. Las métricas que ves aquí reflejan el estado real y vivo de
+              tu base de datos.
             </p>
           </div>
 
           <div className="flex gap-3 flex-wrap">
             <div className="bg-white/10 border border-white/20 rounded-2xl p-3.5 px-5 min-w-[120px]">
               <div className="text-white text-2xl font-extrabold font-['Poppins']">
-                4
+                {loading ? "..." : activeVacancies}
               </div>
-              <div className="text-white/75 text-xs">Perfiles activos</div>
+              <div className="text-white/75 text-xs">Vacantes activas</div>
             </div>
             <div className="bg-white/10 border border-white/20 rounded-2xl p-3.5 px-5 min-w-[120px]">
               <div className="text-white text-2xl font-extrabold font-['Poppins']">
-                97
+                {loading ? "..." : totalApplicants}
               </div>
-              <div className="text-white/75 text-xs">Postulantes activos</div>
+              <div className="text-white/75 text-xs">Postulantes registrados</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="kpi-grid">
+      {/* KPI Grid Real */}
+      <div className="kpi-grid mb-6">
         <div className="card kpi-card card-hover">
           <div className="kpi-top">
             <div
@@ -86,12 +173,12 @@ export default function AdminDashboardPage() {
             >
               <BriefcaseIcon size={18} />
             </div>
-            <span className="kpi-trend" style={{ color: "var(--green)" }}>
-              <TrendUpIcon size={14} /> 12%
+            <span className="kpi-trend text-xs font-semibold text-[var(--ink-faint)]">
+              {totalVacancies} en total
             </span>
           </div>
-          <div className="kpi-value">4</div>
-          <div className="kpi-label">Perfiles activos</div>
+          <div className="kpi-value">{loading ? "..." : activeVacancies}</div>
+          <div className="kpi-label">Vacantes activas</div>
         </div>
 
         <div className="card kpi-card card-hover">
@@ -105,11 +192,11 @@ export default function AdminDashboardPage() {
             >
               <UserIcon size={18} />
             </div>
-            <span className="kpi-trend" style={{ color: "var(--green)" }}>
-              <TrendUpIcon size={14} /> 8%
+            <span className="kpi-trend text-xs font-semibold text-[var(--ink-faint)]">
+              En tu organización
             </span>
           </div>
-          <div className="kpi-value">97</div>
+          <div className="kpi-value">{loading ? "..." : totalApplicants}</div>
           <div className="kpi-label">Postulantes totales</div>
         </div>
 
@@ -121,12 +208,12 @@ export default function AdminDashboardPage() {
             >
               <VideoIcon size={18} />
             </div>
-            <span className="kpi-trend" style={{ color: "var(--green)" }}>
-              <TrendUpIcon size={14} /> 24%
+            <span className="kpi-trend text-xs font-semibold text-[var(--green)]">
+              Concluidas
             </span>
           </div>
-          <div className="kpi-value">61</div>
-          <div className="kpi-label">Entrevistas en vivo realizadas</div>
+          <div className="kpi-value">{loading ? "..." : completedInterviews}</div>
+          <div className="kpi-label">Entrevistas realizadas</div>
         </div>
 
         <div className="card kpi-card card-hover">
@@ -137,72 +224,79 @@ export default function AdminDashboardPage() {
             >
               <AwardIcon size={18} />
             </div>
-            <span className="kpi-trend" style={{ color: "var(--red)" }}>
-              <TrendDownIcon size={14} /> 3%
+            <span className="kpi-trend text-xs font-semibold text-[var(--navy)]">
+              Match IA
             </span>
           </div>
-          <div className="kpi-value">79%</div>
+          <div className="kpi-value">{loading ? "..." : `${avgMatch}%`}</div>
           <div className="kpi-label">Compatibilidad promedio</div>
         </div>
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4.5 mb-4.5">
-        <div className="card chart-card">
-          <h3 className="chart-title">Postulaciones por vacante</h3>
-          <div className="chart-sub">Últimos 30 días</div>
-          <div className="bars">
-            <div className="bar-col">
-              <span className="bar-value">34</span>
-              <div className="bar" style={{ height: "100%" }} />
-              <span className="bar-label">
-                Desarrollo
-                <br />
-                de Software
-              </span>
-            </div>
-            <div className="bar-col">
-              <span className="bar-value">27</span>
-              <div className="bar" style={{ height: "79%" }} />
-              <span className="bar-label">
-                Levant. de
-                <br />
-                Requisitos
-              </span>
-            </div>
-            <div className="bar-col">
-              <span className="bar-value">21</span>
-              <div className="bar" style={{ height: "62%" }} />
-              <span className="bar-label">
-                Datos
-                <br />e IA
-              </span>
-            </div>
-            <div className="bar-col">
-              <span className="bar-value">15</span>
-              <div className="bar" style={{ height: "44%" }} />
-              <span className="bar-label">
-                Gestión de
-                <br />
-                Proyectos
-              </span>
-            </div>
+      {/* Charts Row 1: Barras Reales por Vacante + Donut de Pipeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4.5 mb-6">
+        <div className="card chart-card flex flex-col justify-between">
+          <div>
+            <h3 className="chart-title">Postulaciones por vacante</h3>
+            <div className="chart-sub">Registros reales vinculados</div>
           </div>
+
+          {loading ? (
+            <p className="text-sm text-[var(--ink-soft)] my-12 text-center">
+              Cargando métricas de vacantes…
+            </p>
+          ) : vacancies.length === 0 ? (
+            <div className="py-12 text-center text-sm text-[var(--ink-soft)]">
+              Aún no tienes vacantes creadas.
+              <div className="mt-3">
+                <Link href="/admin/vacantes/crear" className="btn btn-outline btn-sm">
+                  Crear mi primera vacante
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="bars mt-6 min-h-[170px]">
+              {vacancies.slice(0, 5).map((vac) => {
+                const heightPct = Math.max(
+                  12,
+                  Math.round((vac.applicantCount / maxApplicantCount) * 100),
+                );
+                return (
+                  <div className="bar-col" key={vac.id}>
+                    <span className="bar-value">{vac.applicantCount}</span>
+                    <div
+                      className="bar"
+                      style={{
+                        height: `${vac.applicantCount > 0 ? heightPct : 6}%`,
+                        background:
+                          vac.applicantCount > 0
+                            ? "var(--grad-brand)"
+                            : "var(--navy-tint)",
+                      }}
+                    />
+                    <span
+                      className="bar-label line-clamp-2"
+                      title={vac.title}
+                    >
+                      {vac.title}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="card chart-card">
           <h3 className="chart-title">Estado de candidatos</h3>
-          <div className="chart-sub">Pipeline actual</div>
-          <div className="donut-wrap flex-col sm:flex-row items-center justify-around">
+          <div className="chart-sub">Pipeline real actual</div>
+          <div className="donut-wrap flex-col sm:flex-row items-center justify-around mt-4">
             <div
               className="donut"
-              style={{
-                background:
-                  "conic-gradient(var(--navy) 0 45%, var(--purple) 45% 70%, var(--green) 70% 88%, var(--red) 88% 100%)",
-              }}
+              style={{ background: donutGradient }}
             >
               <div className="donut-center">
-                <b>97</b>
+                <b>{loading ? "..." : totalApplicants}</b>
                 <span>Total</span>
               </div>
             </div>
@@ -212,117 +306,126 @@ export default function AdminDashboardPage() {
                   className="legend-dot"
                   style={{ background: "var(--navy)" }}
                 />
-                En evaluación (45%)
+                En evaluación ({pctEval}%) · {inEvaluation}
               </div>
               <div className="legend-item">
                 <span
                   className="legend-dot"
                   style={{ background: "var(--purple)" }}
                 />
-                Entrevista agendada (25%)
+                Entrevista agendada ({pctInterview}%) · {inInterview}
               </div>
               <div className="legend-item">
                 <span
                   className="legend-dot"
                   style={{ background: "var(--green)" }}
                 />
-                Aprobados (18%)
+                Aprobados ({pctApproved}%) · {approved}
               </div>
               <div className="legend-item">
                 <span
                   className="legend-dot"
                   style={{ background: "var(--red)" }}
                 />
-                Descartados (12%)
+                Descartados ({pctRejected}%) · {rejected}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Charts Row 2 */}
+      {/* Charts Row 2: Skills Reales Requeridas + Postulaciones Recientes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4.5">
         <div className="card chart-card">
-          <h3 className="chart-title">Competencias más frecuentes</h3>
+          <h3 className="chart-title">Competencias más requeridas</h3>
           <div className="chart-sub">
-            Detectadas en hojas de vida analizadas
+            Extraídas de las habilidades de tus vacantes
           </div>
-          <div className="hbar-row">
-            <span className="hbar-label">Levantamiento de requisitos</span>
-            <div className="hbar-track">
-              <div className="hbar-fill" style={{ width: "92%" }} />
-            </div>
-            <span className="hbar-pct">92%</span>
-          </div>
-          <div className="hbar-row">
-            <span className="hbar-label">Java / Python</span>
-            <div className="hbar-track">
-              <div className="hbar-fill" style={{ width: "85%" }} />
-            </div>
-            <span className="hbar-pct">85%</span>
-          </div>
-          <div className="hbar-row">
-            <span className="hbar-label">Pensamiento analítico</span>
-            <div className="hbar-track">
-              <div className="hbar-fill" style={{ width: "78%" }} />
-            </div>
-            <span className="hbar-pct">78%</span>
-          </div>
-          <div className="hbar-row">
-            <span className="hbar-label">Metodologías ágiles</span>
-            <div className="hbar-track">
-              <div className="hbar-fill" style={{ width: "66%" }} />
-            </div>
-            <span className="hbar-pct">66%</span>
-          </div>
-          <div className="hbar-row mb-0">
-            <span className="hbar-label">Analítica con IA</span>
-            <div className="hbar-track">
-              <div className="hbar-fill" style={{ width: "58%" }} />
-            </div>
-            <span className="hbar-pct">58%</span>
+          <div className="mt-4 flex flex-col gap-3">
+            {loading ? (
+              <p className="text-sm text-[var(--ink-soft)] py-6 text-center">
+                Calculando competencias…
+              </p>
+            ) : (stats?.topSkills ?? []).length === 0 ? (
+              <p className="text-sm text-[var(--ink-soft)] py-6 text-center">
+                Configura habilidades técnicas en tus vacantes para visualizarlas aquí.
+              </p>
+            ) : (
+              (stats?.topSkills ?? []).map((skill) => (
+                <div className="hbar-row" key={skill.name}>
+                  <span className="hbar-label font-medium">{skill.name}</span>
+                  <div className="hbar-track">
+                    <div
+                      className="hbar-fill"
+                      style={{ width: `${Math.max(10, skill.percentage)}%` }}
+                    />
+                  </div>
+                  <span className="hbar-pct">{skill.count} vac.</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
         <div className="card chart-card">
-          <h3 className="chart-title">Tiempo promedio de evaluación</h3>
-          <div className="chart-sub">Días desde postulación hasta decisión</div>
-          <div className="flex items-center justify-between gap-6 mt-2">
-            <div>
-              <div className="text-4xl font-extrabold font-['Poppins'] text-[var(--navy)]">
-                3.2
-                <span className="text-base text-[var(--ink-faint)] font-semibold ml-1">
-                  días
-                </span>
-              </div>
-              <div className="badge badge-green mt-2">
-                <TrendUpIcon size={14} /> 18% más rápido
-              </div>
-            </div>
-
-            <svg viewBox="0 0 220 80" className="w-[200px] h-[75px]">
-              <polyline
-                points="0,60 30,55 60,50 90,42 120,38 150,25 180,20 220,15"
-                fill="none"
-                stroke="var(--purple)"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <polyline
-                points="0,60 30,55 60,50 90,42 120,38 150,25 180,20 220,15 220,80 0,80"
-                fill="url(#sparkFill)"
-                opacity="0.25"
-                stroke="none"
-              />
-              <defs>
-                <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop stopColor="#6C63FF" />
-                  <stop offset="1" stopColor="#6C63FF" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="chart-title">Postulantes recientes</h3>
+            <Link
+              href="/admin/reportes"
+              className="text-xs text-[var(--navy)] font-bold hover:underline flex items-center gap-1"
+            >
+              Ver todos en Reportes
+              <ArrowRightIcon size={12} />
+            </Link>
           </div>
+          <div className="chart-sub mb-3">Últimas postulaciones registradas</div>
+
+          {loading ? (
+            <p className="text-sm text-[var(--ink-soft)] py-6 text-center">
+              Cargando postulantes…
+            </p>
+          ) : (stats?.recentApplications ?? []).length === 0 ? (
+            <div className="py-8 text-center text-sm text-[var(--ink-soft)]">
+              Aún no hay postulaciones de candidatos registradas.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {(stats?.recentApplications ?? []).map((candidate) => (
+                <div
+                  key={candidate.applicationId}
+                  className="flex items-center justify-between p-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--surface-hover,#f8fafc)] transition-colors"
+                >
+                  <div className="min-w-0 pr-3">
+                    <b className="text-sm font-semibold text-[var(--ink)] block truncate">
+                      {candidate.candidateName}
+                    </b>
+                    <span className="text-xs text-[var(--ink-soft)] block truncate">
+                      {candidate.vacancyTitle} · {new Date(candidate.submittedAt).toLocaleDateString("es-CO")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {candidate.matchScore != null ? (
+                      <span className="badge badge-green text-xs">
+                        {Math.round(candidate.matchScore)}% match
+                      </span>
+                    ) : (
+                      <span className="badge badge-navy text-xs">
+                        {candidate.status === "completed" ? "Completado" : "Pendiente"}
+                      </span>
+                    )}
+                    <Link
+                      href={`/admin/candidatos/${candidate.candidateId}?applicationId=${encodeURIComponent(
+                        candidate.applicationId,
+                      )}`}
+                      className="btn btn-outline btn-sm py-1 px-2.5 text-xs"
+                    >
+                      Ver perfil
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

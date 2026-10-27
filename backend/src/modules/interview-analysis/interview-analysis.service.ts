@@ -198,20 +198,53 @@ export class InterviewAnalysisService {
   }
 
   async getCandidateAnalyses(candidateId: string) {
-    const analyses = await this.prisma.interviewAnalysis.findMany({
-      where: { application: { candidateId } },
-      include: {
+    const applications = await this.prisma.candidateApplication.findMany({
+      where: { candidateId },
+      orderBy: { submittedAt: 'desc' },
+      select: {
+        id: true,
+        vacancy: {
+          select: { title: true, organization: { select: { name: true } } },
+        },
+        interviewAnalysis: true,
+        interviews: { select: { type: true, status: true, videoUrl: true } },
+      },
+    });
+
+    return applications.map((application) => {
+      if (application.interviewAnalysis) {
+        return this.serialize(application.interviewAnalysis, application);
+      }
+      const technicalReady = application.interviews.some(
+        (interview) => interview.type === 'technical' && interview.status === 'completed',
+      );
+      const behavioralReady = application.interviews.some(
+        (interview) => interview.type === 'behavioral' &&
+          interview.status === 'completed' && Boolean(interview.videoUrl),
+      );
+      return {
+        id: application.id,
         application: {
-          include: {
-            vacancy: { include: { organization: { select: { name: true } } } },
+          id: application.id,
+          vacancy: {
+            title: application.vacancy.title,
+            organization: application.vacancy.organization.name,
           },
         },
-      },
-      orderBy: { updatedAt: 'desc' },
+        status: technicalReady && behavioralReady ? 'ready_to_analyze' : 'not_available',
+        technicalScore: null,
+        behavioralScore: null,
+        overallScore: null,
+        technicalSummary: null,
+        behavioralSummary: null,
+        strengths: [],
+        improvements: [],
+        recommendation: null,
+        failureReason: null,
+        analyzedAt: null,
+        interviewsReady: technicalReady && behavioralReady,
+      };
     });
-    return analyses.map((analysis) =>
-      this.serialize(analysis, analysis.application),
-    );
   }
 
   async getCandidateAnalysis(candidateId: string, applicationId: string) {
@@ -272,28 +305,73 @@ export class InterviewAnalysisService {
     };
   }
 
-  async getRecruiterAnalysis(recruiterId: string, applicationId: string) {
-    const recruiter = await this.prisma.user.findUnique({
-      where: { id: recruiterId },
-      select: { organizationId: true },
-    });
-    if (!recruiter?.organizationId) {
+  async getRecruiterAnalysis(
+    recruiterId: string,
+    applicationId: string,
+    orgId?: string | null,
+  ) {
+    let organizationId = orgId;
+    if (!organizationId) {
+      const recruiter = await this.prisma.user.findUnique({
+        where: { id: recruiterId },
+        select: { organizationId: true },
+      });
+      organizationId = recruiter?.organizationId ?? null;
+    }
+    if (!organizationId) {
       throw new NotFoundException(
         'El recruiter no tiene una organizacion asociada.',
       );
     }
     const application = await this.prisma.candidateApplication.findFirst({
-      where: { id: applicationId, organizationId: recruiter.organizationId },
+      where: { id: applicationId, organizationId },
       include: {
         candidate: {
           include: {
             candidateProfile: true,
-            technicalSkills: { select: { name: true, estimatedProficiency: true } },
+            technicalSkills: {
+              select: { name: true, estimatedProficiency: true },
+            },
+            documents: {
+              where: { kind: 'cv' },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
           },
         },
-        vacancy: { include: { organization: { select: { name: true } } } },
+        vacancy: {
+          include: {
+            organization: { select: { name: true } },
+            skills: { select: { name: true, weight: true } },
+          },
+        },
         interviewAnalysis: true,
-        interviews: { select: { type: true, status: true, videoUrl: true } },
+        interviews: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            videoUrl: true,
+            answers: {
+              select: {
+                id: true,
+                responseText: true,
+                question: { select: { id: true, category: true, prompt: true } },
+              },
+              take: 20,
+            },
+            videoMarkers: {
+              select: {
+                id: true,
+                timestampMs: true,
+                questionId: true,
+                question: { select: { id: true, category: true, prompt: true } },
+              },
+              orderBy: { timestampMs: 'asc' },
+              take: 30,
+            },
+          },
+        },
       },
     });
     if (!application) {
@@ -306,12 +384,84 @@ export class InterviewAnalysisService {
       (interview) =>
         interview.type === 'technical' && interview.status === 'completed',
     );
-    const behavioralReady = application.interviews.some(
+    const behavioralInterview = application.interviews.find(
       (interview) =>
         interview.type === 'behavioral' &&
         interview.status === 'completed' &&
         Boolean(interview.videoUrl),
     );
+    const behavioralReady = Boolean(behavioralInterview);
+    const technicalInterview = application.interviews.find(
+      (interview) =>
+        interview.type === 'technical' && interview.status === 'completed',
+    );
+
+    const cvAsset = application.candidate.documents[0];
+    const cvDownloadUrl = cvAsset
+      ? await this.createCvDownloadUrl(cvAsset.fileUrl)
+      : null;
+
+    const analysisBlock = application.interviewAnalysis
+      ? {
+          ...this.serialize(application.interviewAnalysis, application),
+          interviewsReady: true,
+        }
+      : {
+          id: application.id,
+          status:
+            technicalReady && behavioralReady
+              ? 'ready_to_analyze'
+              : 'not_available',
+          technicalScore: null,
+          behavioralScore: null,
+          overallScore: null,
+          technicalSummary: null,
+          behavioralSummary: null,
+          strengths: [] as string[],
+          improvements: [] as string[],
+          recommendation: null,
+          failureReason: null,
+          analyzedAt: null,
+          interviewsReady: technicalReady && behavioralReady,
+          application: {
+            id: application.id,
+            vacancy: {
+              title: application.vacancy.title,
+              organization: application.vacancy.organization.name,
+            },
+          },
+        };
+
+    const strengths = Array.isArray(analysisBlock.strengths)
+      ? analysisBlock.strengths
+      : [];
+    const improvements = Array.isArray(analysisBlock.improvements)
+      ? analysisBlock.improvements
+      : [];
+
+    const skillBars = this.buildTechnicalSkillBars(
+      application.vacancy.skills,
+      application.candidate.technicalSkills,
+    );
+
+    const evidences = this.buildEvidences({
+      strengths,
+      improvements,
+      technicalSummary:
+        typeof analysisBlock.technicalSummary === 'string'
+          ? analysisBlock.technicalSummary
+          : null,
+      behavioralSummary:
+        typeof analysisBlock.behavioralSummary === 'string'
+          ? analysisBlock.behavioralSummary
+          : null,
+      technicalInterviewId: technicalInterview?.id ?? null,
+      behavioralInterviewId: behavioralInterview?.id ?? null,
+      technicalAnswers: technicalInterview?.answers ?? [],
+      videoMarkers: behavioralInterview?.videoMarkers ?? [],
+      applicationId: application.id,
+      candidateId: application.candidateId,
+    });
 
     return {
       candidate: {
@@ -321,45 +471,477 @@ export class InterviewAnalysisService {
         phone: application.candidate.phone,
         profile: application.candidate.candidateProfile,
         technicalSkills: application.candidate.technicalSkills,
+        cvFileName: cvAsset?.fileName ?? null,
+        cvDownloadUrl,
       },
       application: {
         id: application.id,
         status: application.status,
         submittedAt: application.submittedAt,
+        matchScore: application.matchScore,
         vacancy: {
           id: application.vacancyId,
           title: application.vacancy.title,
           organization: application.vacancy.organization.name,
         },
       },
-      analysis: application.interviewAnalysis
+      analysis: analysisBlock,
+      dofa: {
+        strengths,
+        opportunities: improvements,
+        weaknesses: improvements.length
+          ? improvements
+          : [],
+        threats: [] as string[],
+        notes: {
+          weaknesses:
+            improvements.length === 0
+              ? 'Sin evidencia suficiente para listar debilidades específicas.'
+              : 'Derivadas de los puntos de mejora identificados por la IA en esta postulación.',
+          threats:
+            'Sin evidencia suficiente en el análisis actual para identificar amenazas o riesgos.',
+          opportunities:
+            improvements.length === 0
+              ? 'Sin evidencia suficiente para listar oportunidades de desarrollo.'
+              : 'Áreas de desarrollo sugeridas por el análisis de entrevistas de esta postulación.',
+        },
+      },
+      competencies: {
+        technicalPercentage: analysisBlock.technicalScore,
+        softPercentage: analysisBlock.behavioralScore,
+        technicalBars: skillBars,
+      },
+      evidences,
+      interviews: {
+        technicalId: technicalInterview?.id ?? null,
+        behavioralId: behavioralInterview?.id ?? null,
+        hasVideo: Boolean(behavioralInterview?.videoUrl),
+      },
+    };
+  }
+
+  async getRecruiterInterviewReview(
+    recruiterId: string,
+    applicationId: string,
+    interviewType: 'technical' | 'behavioral' = 'behavioral',
+    orgId?: string | null,
+  ) {
+    let organizationId = orgId;
+    if (!organizationId) {
+      const recruiter = await this.prisma.user.findUnique({
+        where: { id: recruiterId },
+        select: { organizationId: true },
+      });
+      organizationId = recruiter?.organizationId ?? null;
+    }
+    if (!organizationId) {
+      throw new NotFoundException(
+        'El recruiter no tiene una organizacion asociada.',
+      );
+    }
+
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: { id: applicationId, organizationId },
+      include: {
+        candidate: { select: { id: true, fullName: true } },
+        vacancy: { select: { id: true, title: true } },
+        interviews: {
+          where: { type: interviewType },
+          orderBy: { updatedAt: 'desc' },
+          take: 1,
+          include: {
+            answers: {
+              select: {
+                id: true,
+                responseText: true,
+                question: {
+                  select: { id: true, category: true, prompt: true },
+                },
+              },
+              orderBy: { createdAt: 'asc' },
+            },
+            videoMarkers: {
+              select: {
+                id: true,
+                timestampMs: true,
+                questionId: true,
+                question: {
+                  select: { id: true, category: true, prompt: true },
+                },
+              },
+              orderBy: { timestampMs: 'asc' },
+            },
+            questions: {
+              select: { id: true, category: true, prompt: true },
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (!application) {
+      throw new NotFoundException(
+        'La postulacion no existe o no pertenece a la organización.',
+      );
+    }
+
+    const interview = application.interviews[0] ?? null;
+    let videoDownloadUrl: string | null = null;
+    if (interview?.videoUrl) {
+      videoDownloadUrl = await this.createVideoDownloadUrl(interview.videoUrl);
+    }
+
+    return {
+      candidate: application.candidate,
+      vacancy: application.vacancy,
+      applicationId: application.id,
+      interview: interview
         ? {
-            ...this.serialize(application.interviewAnalysis, application),
-            interviewsReady: true,
+            id: interview.id,
+            type: interview.type,
+            status: interview.status,
+            videoUrl: interview.videoUrl,
+            videoDownloadUrl,
+            answers: interview.answers.map((answer) => ({
+              id: answer.id,
+              responseText: answer.responseText,
+              question: answer.question,
+            })),
+            markers: interview.videoMarkers.map((marker) => ({
+              id: marker.id,
+              timestampMs: marker.timestampMs,
+              questionId: marker.questionId,
+              question: marker.question,
+            })),
+            questions: interview.questions,
           }
-        : {
-            id: application.id,
-            status: technicalReady && behavioralReady ? 'ready_to_analyze' : 'not_available',
-            technicalScore: null,
-            behavioralScore: null,
-            overallScore: null,
-            technicalSummary: null,
-            behavioralSummary: null,
-            strengths: [],
-            improvements: [],
-            recommendation: null,
-            failureReason: null,
-            analyzedAt: null,
-            interviewsReady: technicalReady && behavioralReady,
-            application: {
-              id: application.id,
-              vacancy: {
-                title: application.vacancy.title,
-                organization: application.vacancy.organization.name,
+        : null,
+    };
+  }
+
+  private async createVideoDownloadUrl(path: string) {
+    const bucket = this.supabase.getBucketName('video');
+    const storagePath = this.resolveStoragePath(path);
+    const { data, error } = await this.supabase
+      .getClient()
+      .storage.from(bucket)
+      .createSignedUrl(storagePath, 3600);
+    return error ? null : data.signedUrl;
+  }
+
+  async getRecruiterDashboardStats(recruiterId: string, orgId?: string | null) {
+    let organizationId = orgId;
+    if (!organizationId) {
+      const recruiter = await this.prisma.user.findUnique({
+        where: { id: recruiterId },
+        select: { organizationId: true },
+      });
+      organizationId = recruiter?.organizationId ?? null;
+    }
+    if (!organizationId) {
+      throw new NotFoundException(
+        'El recruiter no tiene una organización asociada.',
+      );
+    }
+
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+
+    const vacancies = await this.prisma.vacancy.findMany({
+      where: { organizationId },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        skills: { select: { name: true } },
+        _count: { select: { applications: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const applications = await this.prisma.candidateApplication.findMany({
+      where: { organizationId },
+      select: {
+        id: true,
+        status: true,
+        matchScore: true,
+        submittedAt: true,
+        candidate: { select: { id: true, fullName: true, email: true } },
+        vacancy: { select: { id: true, title: true } },
+        interviewAnalysis: { select: { status: true, overallScore: true } },
+        interviews: { select: { id: true, status: true } },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const totalVacancies = vacancies.length;
+    const activeVacancies = vacancies.filter(
+      (v) => v.status === 'published',
+    ).length;
+    const totalApplicants = applications.length;
+
+    let completedInterviews = 0;
+    for (const app of applications) {
+      completedInterviews += app.interviews.filter(
+        (i) => i.status === 'completed',
+      ).length;
+    }
+
+    const scores = applications
+      .map((app) => app.interviewAnalysis?.overallScore ?? app.matchScore)
+      .filter((s): s is number => s != null && s > 0);
+    const averageMatchScore = scores.length
+      ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+      : 0;
+
+    const vacanciesBreakdown = vacancies.map((v) => ({
+      id: v.id,
+      title: v.title,
+      applicantCount: v._count.applications,
+      status: v.status,
+    }));
+
+    const statusBreakdown = {
+      applied: 0,
+      reviewed: 0,
+      interview_scheduled: 0,
+      completed: 0,
+      rejected: 0,
+      hired: 0,
+    };
+    for (const app of applications) {
+      const st = app.status as keyof typeof statusBreakdown;
+      if (st in statusBreakdown) {
+        statusBreakdown[st]++;
+      } else {
+        statusBreakdown.applied++;
+      }
+    }
+
+    const skillCounts: Record<string, number> = {};
+    for (const v of vacancies) {
+      for (const s of v.skills) {
+        const name = s.name.trim();
+        skillCounts[name] = (skillCounts[name] || 0) + 1;
+      }
+    }
+    const sortedSkills = Object.entries(skillCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
+    const maxSkillCount = sortedSkills[0]?.[1] || 1;
+    const topSkills = sortedSkills.map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / maxSkillCount) * 100),
+    }));
+
+    const recentApplications = applications.slice(0, 6).map((app) => ({
+      applicationId: app.id,
+      candidateId: app.candidate.id,
+      candidateName: app.candidate.fullName,
+      candidateEmail: app.candidate.email,
+      vacancyTitle: app.vacancy.title,
+      submittedAt: app.submittedAt,
+      status: app.status,
+      matchScore: app.interviewAnalysis?.overallScore ?? app.matchScore ?? null,
+    }));
+
+    return {
+      organizationName: organization?.name || 'Mi Organización',
+      totalVacancies,
+      activeVacancies,
+      totalApplicants,
+      completedInterviews,
+      averageMatchScore,
+      vacanciesBreakdown,
+      statusBreakdown,
+      topSkills,
+      recentApplications,
+    };
+  }
+
+  async listRecruiterReports(recruiterId: string, orgId?: string | null) {
+    let organizationId = orgId;
+    if (!organizationId) {
+      const recruiter = await this.prisma.user.findUnique({
+        where: { id: recruiterId },
+        select: { organizationId: true },
+      });
+      organizationId = recruiter?.organizationId ?? null;
+    }
+    if (!organizationId) {
+      throw new NotFoundException(
+        'El recruiter no tiene una organizacion asociada.',
+      );
+    }
+
+    const rows = await this.prisma.interviewAnalysis.findMany({
+      where: {
+        status: 'completed',
+        application: { organizationId },
+      },
+      orderBy: { analyzedAt: 'desc' },
+      include: {
+        application: {
+          include: {
+            candidate: {
+              select: { id: true, fullName: true, email: true },
+            },
+            vacancy: {
+              select: {
+                id: true,
+                title: true,
+                organization: { select: { name: true } },
               },
             },
           },
-    };
+        },
+      },
+    });
+
+    return rows.map((row) => {
+      const initials = row.application.candidate.fullName
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? '')
+        .join('');
+      return {
+        applicationId: row.applicationId,
+        candidateId: row.application.candidate.id,
+        candidateName: row.application.candidate.fullName,
+        candidateEmail: row.application.candidate.email,
+        initials: initials || 'CA',
+        vacancyId: row.application.vacancy.id,
+        vacancyTitle: row.application.vacancy.title,
+        organization: row.application.vacancy.organization.name,
+        overallScore: row.overallScore,
+        technicalScore: row.technicalScore,
+        behavioralScore: row.behavioralScore,
+        recommendation: row.recommendation,
+        analyzedAt: row.analyzedAt,
+      };
+    });
+  }
+
+  private buildTechnicalSkillBars(
+    vacancySkills: Array<{ name: string; weight: number }>,
+    candidateSkills: Array<{ name: string; estimatedProficiency: number }>,
+  ) {
+    if (!vacancySkills.length) {
+      return candidateSkills.slice(0, 8).map((skill) => ({
+        name: skill.name,
+        percentage: Math.round(skill.estimatedProficiency),
+        source: 'cv' as const,
+      }));
+    }
+    const byName = new Map(
+      candidateSkills.map((skill) => [
+        skill.name.trim().toLowerCase(),
+        skill.estimatedProficiency,
+      ]),
+    );
+    return vacancySkills.map((skill) => {
+      const match = byName.get(skill.name.trim().toLowerCase());
+      return {
+        name: skill.name,
+        percentage: match !== undefined ? Math.round(match) : 0,
+        source: match !== undefined ? ('cv' as const) : ('vacancy' as const),
+        matched: match !== undefined,
+      };
+    });
+  }
+
+  private buildEvidences(input: {
+    strengths: string[];
+    improvements: string[];
+    technicalSummary: string | null;
+    behavioralSummary: string | null;
+    technicalInterviewId: string | null;
+    behavioralInterviewId: string | null;
+    technicalAnswers: Array<{
+      id: string;
+      responseText: string | null;
+      question: { id: string; category: string; prompt: string };
+    }>;
+    videoMarkers: Array<{
+      id: string;
+      timestampMs: number;
+      questionId: string;
+      question: { id: string; category: string; prompt: string };
+    }>;
+    applicationId: string;
+    candidateId: string;
+  }) {
+    const evidences: Array<{
+      id: string;
+      competency: string;
+      kind: 'technical' | 'soft' | 'cv' | 'general';
+      summary: string;
+      score: number | null;
+      href: string;
+    }> = [];
+
+    for (const answer of input.technicalAnswers.slice(0, 6)) {
+      evidences.push({
+        id: `tech-${answer.id}`,
+        competency: answer.question.category || 'Competencia técnica',
+        kind: 'technical',
+        summary:
+          answer.responseText?.slice(0, 180) ||
+          answer.question.prompt.slice(0, 180),
+        score: null,
+        href: `/admin/candidatos/${input.candidateId}/video?applicationId=${encodeURIComponent(input.applicationId)}&interviewType=technical&answerId=${encodeURIComponent(answer.id)}&questionId=${encodeURIComponent(answer.question.id)}`,
+      });
+    }
+
+    for (const marker of input.videoMarkers.slice(0, 6)) {
+      const seconds = Math.max(0, Math.round(marker.timestampMs / 1000));
+      evidences.push({
+        id: `soft-${marker.id}`,
+        competency: marker.question.category || 'Habilidad blanda',
+        kind: 'soft',
+        summary: marker.question.prompt.slice(0, 180),
+        score: null,
+        href: `/admin/candidatos/${input.candidateId}/video?applicationId=${encodeURIComponent(input.applicationId)}&interviewType=behavioral&markerId=${encodeURIComponent(marker.id)}&t=${seconds}`,
+      });
+    }
+
+    if (!evidences.length && input.technicalSummary) {
+      evidences.push({
+        id: 'tech-summary',
+        competency: 'Resumen técnico',
+        kind: 'technical',
+        summary: input.technicalSummary,
+        score: null,
+        href: `/admin/candidatos/${input.candidateId}/video?applicationId=${encodeURIComponent(input.applicationId)}&interviewType=technical`,
+      });
+    }
+    if (input.behavioralSummary) {
+      evidences.push({
+        id: 'soft-summary',
+        competency: 'Comunicación / habilidades blandas',
+        kind: 'soft',
+        summary: input.behavioralSummary,
+        score: null,
+        href: `/admin/candidatos/${input.candidateId}/video?applicationId=${encodeURIComponent(input.applicationId)}&interviewType=behavioral`,
+      });
+    }
+
+    return evidences;
+  }
+
+  private async createCvDownloadUrl(path: string) {
+    const bucket = this.supabase.getBucketName('cv');
+    const { data, error } = await this.supabase
+      .getClient()
+      .storage.from(bucket)
+      .createSignedUrl(path, 3600);
+    return error ? null : data.signedUrl;
   }
 
   async analyzeForRecruiter(
@@ -615,15 +1197,23 @@ export class InterviewAnalysisService {
 
   private async downloadVideo(storagePath: string) {
     const maxBytes = Number(process.env.MAX_AI_VIDEO_BYTES ?? 20 * 1024 * 1024);
-    const bucket = this.supabase.getBucketName('video');
     const path = this.resolveStoragePath(storagePath);
+    const asset = await this.prisma.storageAsset.findFirst({
+      where: { kind: 'interview_video', fileUrl: path },
+      orderBy: { createdAt: 'desc' },
+      select: { bucketName: true },
+    });
+    const bucket = asset?.bucketName ?? this.supabase.getBucketName('video');
     const { data, error } = await this.supabase
       .getClient()
       .storage.from(bucket)
       .download(path);
     if (error || !data) {
+      this.logger.warn(
+        `Video de entrevista no encontrado en Storage (bucket=${bucket}, path=${path}). Comprueba que el archivo siga en el bucket y que el registro de la entrevista apunte a la ruta correcta.`,
+      );
       throw new Error(
-        `No se pudo obtener el video: ${error?.message ?? 'archivo no encontrado'}`,
+        'No se encontro el video guardado. Verifica que no se haya movido o eliminado del bucket de videos y luego vuelve a intentar el analisis.',
       );
     }
     const buffer = Buffer.from(await data.arrayBuffer());

@@ -47,4 +47,9 @@ export interface VacancyRepositoryPort {
     vacancySkills: Array<{ name: string; weight: number }>;
     candidateSkills: Array<{ name: string; estimatedProficiency: number }>;
   } | null>;
+  findPublishedMatchData(candidateId: string): Promise<Array<{
+    vacancyId: string;
+    vacancySkills: Array<{ name: string; weight: number }>;
+    candidateSkills: Array<{ name: string; estimatedProficiency: number }>;
+  }>>;
 }

@@ -19,12 +19,13 @@ type MatchItem = {
 };
 
 export default function CandidatoVacantesPage() {
-  const { listAvailableVacancies, listCandidateApplications, getVacancyMatch, applyToVacancy } = useAuth();
+  const { listAvailableVacancies, listCandidateApplications, getVacancyMatches, applyToVacancy } = useAuth();
   const [vacancies, setVacancies] = useState<VacancyItem[]>([]);
   const [matches, setMatches] = useState<Record<string, MatchItem>>({});
   const [selectedVacancy, setSelectedVacancy] = useState<VacancyItem | null>(null);
   const [applying, setApplying] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [applicationsLoaded, setApplicationsLoaded] = useState(false);
   const [error, setError] = useState('');
 
   const handleApply = async () => {
@@ -64,32 +65,36 @@ export default function CandidatoVacantesPage() {
       try {
         setLoading(true);
         setError('');
-        const [data, applicationData] = await Promise.all([
-          listAvailableVacancies(),
-          listCandidateApplications(),
-        ]);
-        if (active) {
-          const applications = Array.isArray(applicationData) ? applicationData : [];
-          const appliedIds = new Set(applications.map((application) => application.vacancyId));
-          const available = (Array.isArray(data) ? data : []).filter(
-            (vacancy) => !appliedIds.has(vacancy.id),
-          );
-          setVacancies(available);
-          const matchEntries = await Promise.all(
-            available.map(async (vacancy) => {
-              try {
-                return [vacancy.id, await getVacancyMatch(vacancy.id)] as const;
-              } catch {
-                return null;
-              }
-            }),
-          );
-          if (active) {
-            setMatches(
-              Object.fromEntries(matchEntries.filter((entry): entry is readonly [string, MatchItem] => entry !== null)),
-            );
-          }
-        }
+        const vacanciesRequest = listAvailableVacancies();
+        const applicationsRequest = listCandidateApplications().catch(() => null);
+        const data = await vacanciesRequest;
+        if (!active) return;
+
+        const published = Array.isArray(data) ? data : [];
+        setVacancies(published);
+        setLoading(false);
+
+        void applicationsRequest
+          .then((applicationData) => {
+            if (!active) return;
+            const applications = Array.isArray(applicationData) ? applicationData : [];
+            const appliedIds = new Set(applications.map((application) => application.vacancyId));
+            setVacancies((current) => current.filter((vacancy) => !appliedIds.has(vacancy.id)));
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            if (active) setApplicationsLoaded(true);
+          });
+
+        void getVacancyMatches()
+          .then((items) => {
+            if (!active) return;
+            setMatches(Object.fromEntries(items.map((item) => [
+              item.vacancyId,
+              { matchPercentage: item.matchPercentage, evaluatedSkills: item.evaluatedSkills } satisfies MatchItem,
+            ])));
+          })
+          .catch(() => undefined);
       } catch (requestError) {
         if (active) {
           setError(
@@ -265,7 +270,7 @@ export default function CandidatoVacantesPage() {
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={applying}
+                disabled={applying || !applicationsLoaded}
                 onClick={() => void handleApply()}
               >
                 {applying ? 'Enviando…' : 'Postularme'}

@@ -64,6 +64,7 @@ enum InterviewType {
 
 enum FileKind {
   cv
+  identity_document
   cover_letter
   interview_video
   profile_photo
@@ -98,6 +99,7 @@ model User {
   phone          String?
   role           Role          @default(candidate)
   authProvider   AuthProvider  @default(local)
+  activeSessionId String?
   isActive       Boolean       @default(true)
   candidateStatus CandidateStatus @default(active)
   organizationId String?
@@ -223,6 +225,7 @@ model CandidateApplication {
   interviewAnalysis InterviewAnalysis?
 
   @@unique([candidateId, vacancyId])
+  @@index([candidateId, submittedAt(sort: Desc)])
   @@map("candidate_applications")
 }
 
@@ -264,6 +267,7 @@ model Interview {
   status          InterviewStatus   @default(scheduled)
   scheduledAt     DateTime?
   startedAt       DateTime?
+  remainingSeconds Int?
   completedAt     DateTime?
   summary         String?
   videoUrl        String?

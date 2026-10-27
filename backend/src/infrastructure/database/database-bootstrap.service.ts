@@ -81,6 +81,10 @@ export class DatabaseBootstrapService implements OnApplicationBootstrap {
             "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
           CREATE INDEX IF NOT EXISTS interview_analyses_status_idx ON interview_analyses(status);
+          CREATE INDEX IF NOT EXISTS interview_analyses_app_status_idx ON interview_analyses("applicationId", status);
+          CREATE INDEX IF NOT EXISTS candidate_applications_org_idx ON candidate_applications("organizationId");
+          CREATE INDEX IF NOT EXISTS candidate_applications_vac_idx ON candidate_applications("vacancyId");
+          CREATE INDEX IF NOT EXISTS candidate_applications_cand_idx ON candidate_applications("candidateId");
         `);
         await this.prisma.$executeRawUnsafe(`
           ALTER TABLE candidate_applications
@@ -90,7 +94,7 @@ export class DatabaseBootstrapService implements OnApplicationBootstrap {
           ALTER TABLE candidate_applications
           ADD COLUMN IF NOT EXISTS "technicalTestEvaluatedAt" TIMESTAMPTZ;
         `);
-        this.logger.log('✅ Las tablas ya existen en la base de datos.');
+        this.logger.log('✅ Las tablas e índices de rendimiento ya existen en la base de datos.');
         return;
       }
 

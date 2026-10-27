@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import {
   ConflictException,
   Injectable,
@@ -150,6 +151,16 @@ export class AuthService {
       );
     }
 
+    const sessionId = this.sessionIdFromAccessToken(data.session.access_token);
+    if (!sessionId) {
+      throw new UnauthorizedException('No fue posible validar la sesi\u00f3n iniciada.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: account.id },
+      data: { activeSessionId: sessionId },
+    });
+
     const role = account.role;
 
     if (data.user.app_metadata?.role !== role) {
@@ -171,6 +182,19 @@ export class AuthService {
         organizationId: account.organizationId,
       },
     };
+  }
+
+  private sessionIdFromAccessToken(accessToken: string): string | null {
+    try {
+      const payload = accessToken.split('.')[1];
+      if (!payload) return null;
+      const claims = JSON.parse(
+        Buffer.from(payload, 'base64url').toString('utf8'),
+      ) as { session_id?: unknown };
+      return typeof claims.session_id === 'string' ? claims.session_id : null;
+    } catch {
+      return null;
+    }
   }
 
   private organizationSlug(name: string) {

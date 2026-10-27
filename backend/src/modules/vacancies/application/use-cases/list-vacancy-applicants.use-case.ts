@@ -5,18 +5,22 @@ import { PrismaService } from '../../../../infrastructure/database/prisma.servic
 export class ListVacancyApplicantsUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
-  async execute(recruiterId: string, vacancyId: string) {
-    const recruiter = await this.prisma.user.findUnique({
-      where: { id: recruiterId },
-      select: { organizationId: true },
-    });
-    if (!recruiter?.organizationId) {
+  async execute(recruiterId: string, vacancyId: string, orgId?: string | null) {
+    let organizationId = orgId;
+    if (!organizationId) {
+      const recruiter = await this.prisma.user.findUnique({
+        where: { id: recruiterId },
+        select: { organizationId: true },
+      });
+      organizationId = recruiter?.organizationId ?? null;
+    }
+    if (!organizationId) {
       throw new NotFoundException('El recruiter no tiene una organización asociada.');
     }
     const vacancy = await this.prisma.vacancy.findFirst({
       where: {
         id: vacancyId,
-        organizationId: recruiter.organizationId,
+        organizationId,
       },
       include: {
         organization: { select: { name: true } },

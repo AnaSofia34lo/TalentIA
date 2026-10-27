@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../shared/context/AuthContext";
 import {
   LogoSparkIcon,
@@ -42,11 +42,13 @@ function emailError(email: string) {
   return "";
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionReplaced = searchParams.get("reason") === "session-replaced";
   const { login, registerCandidate, registerRecruiter } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole>("candidate");
-  const [registerMode, setRegisterMode] = useState(true);
+  const [registerMode, setRegisterMode] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,7 +63,7 @@ export default function LoginPage() {
   const selectRole = (role: UserRole) => {
     if (role === selectedRole) return;
     setSelectedRole(role);
-    setRegisterMode(role === "candidate");
+    setRegisterMode(false);
     setError("");
     setEmail("");
     setPassword("");
@@ -105,7 +107,7 @@ export default function LoginPage() {
       } else {
         const role = await login(email, password, selectedRole);
         router.push(
-          role === "recruiter" ? "/admin/dashboard" : "/candidato/cv",
+          role === "recruiter" ? "/admin/dashboard" : "/candidato/inicio",
         );
       }
     } catch (requestError) {
@@ -183,6 +185,12 @@ export default function LoginPage() {
               Soy candidato
             </button>
           </div>
+
+          {sessionReplaced && (
+            <div className="rounded-lg bg-[var(--red-tint)] text-[var(--red)] text-sm p-3 mb-4" role="alert">
+              Tu sesión se cerró porque esta cuenta inició sesión en otro dispositivo. Inicia sesión para continuar.
+            </div>
+          )}
 
           <form
             onSubmit={handleSubmit}
@@ -320,5 +328,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center text-sm text-[var(--ink-soft)]">
+          Cargando?
+        </div>
+      }
+    >
+      <LoginContent />
+    </React.Suspense>
   );
 }

@@ -18,16 +18,16 @@ export default function PruebaTecnicaPage() {
   const applicationId = searchParams.get('applicationId');
   const { getTechnicalTestAccess } = useAuth();
   const [access, setAccess] = useState<TechnicalTestAccessResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(Boolean(applicationId));
+  const [error, setError] = useState(
+    applicationId
+      ? ''
+      : 'Debes abrir la prueba técnica desde una postulación habilitada. El acceso directo por URL no está permitido.',
+  );
 
   useEffect(() => {
     let active = true;
     if (!applicationId) {
-      setLoading(false);
-      setError(
-        'Debes abrir la prueba técnica desde una postulación habilitada. El acceso directo por URL no está permitido.',
-      );
       return () => {
         active = false;
       };

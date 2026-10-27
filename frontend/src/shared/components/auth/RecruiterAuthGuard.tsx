@@ -4,18 +4,26 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 
+let recruiterVerifiedInMemory = false;
+
+export function setRecruiterVerified(status: boolean) {
+  recruiterVerifiedInMemory = status;
+}
+
 export function RecruiterAuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [authorized, setAuthorized] = useState(false);
+  const [authorized, setAuthorized] = useState(() => recruiterVerifiedInMemory);
 
   useEffect(() => {
     let active = true;
     void supabase.auth.getSession().then(({ data }) => {
       const role = data.session?.user.app_metadata?.role;
       if (!data.session || (role !== 'recruiter' && role !== 'admin')) {
+        recruiterVerifiedInMemory = false;
         router.replace('/login');
         return;
       }
+      recruiterVerifiedInMemory = true;
       if (active) setAuthorized(true);
     });
     return () => {
@@ -24,7 +32,11 @@ export function RecruiterAuthGuard({ children }: { children: React.ReactNode }) 
   }, [router]);
 
   if (!authorized) {
-    return <div className="min-h-screen flex items-center justify-center text-sm text-[var(--ink-soft)]">Verificando sesión...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-[var(--ink-soft)]">
+        Verificando sesión...
+      </div>
+    );
   }
 
   return <>{children}</>;

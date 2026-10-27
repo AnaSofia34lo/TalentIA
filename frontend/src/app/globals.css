@@ -1309,6 +1309,54 @@ table.modern tbody tr:hover {
   margin: 0;
 }
 
+.interview-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.interview-title-row h1 {
+  min-width: 0;
+}
+
+.interview-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.interview-timer strong {
+  color: var(--purple);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.interview-timer-warning {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.interview-timer-warning strong {
+  color: var(--red);
+}
+
+@media (max-width: 640px) {
+  .interview-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
 .q-progress-dots {
   display: flex;
   gap: 6px;

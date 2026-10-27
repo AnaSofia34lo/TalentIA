@@ -76,8 +76,19 @@ export class VacanciesController {
   @ApiResponse({ status: 401, description: 'JWT ausente, inválido o expirado.' })
   @ApiResponse({ status: 403, description: 'Solo recruiters.' })
   @ApiResponse({ status: 404, description: 'La vacante no existe o no pertenece a la organización.' })
-  async applicants(@CurrentUser('id') recruiterId: string, @Param('vacancyId') vacancyId: string) {
-    return this.listVacancyApplicants.execute(recruiterId, vacancyId);
+  async applicants(
+    @CurrentUser('id') recruiterId: string,
+    @Param('vacancyId') vacancyId: string,
+    @CurrentUser('organizationId') organizationId?: string,
+  ) {
+    return this.listVacancyApplicants.execute(recruiterId, vacancyId, organizationId);
+  }
+
+  @Get('matches')
+  @Roles('candidate')
+  @ApiOperation({ summary: 'Calcula en una sola solicitud el match de vacantes publicadas' })
+  async matches(@CurrentUser('id') candidateId: string) {
+    return this.calculateVacancyMatch.executeForPublished(candidateId);
   }
 
   @Get(':vacancyId/match')
