@@ -1,167 +1,81 @@
-# Frontend TalentIA
+# Frontend de TalentIA
 
-## Objetivo
+Aplicación Next.js para los flujos de candidatos y reclutadores. La sesión se administra con Supabase Authentication y las operaciones de negocio se realizan contra la API NestJS mediante JWT.
 
-Aplicación web frontend para la experiencia de recruiters y candidatos en TalentIA.
+## Stack y configuración
 
-## Stack
+- Next.js 16, React 19 y TypeScript.
+- Supabase JS client para sesión y autenticación.
+- API configurable con `NEXT_PUBLIC_API_URL`.
 
-- Next.js 16
-- React 19
-- TypeScript
-- Supabase JS client
+Crea `frontend/.env.local`:
 
-## Configuración
-
-Crear un archivo `.env.local` con las variables de Supabase para conectarse al proyecto.
-
-```bash
+```env
 NEXT_PUBLIC_SUPABASE_URL=https://[PROJECT_REF].supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
-En producción, las variables `NEXT_PUBLIC_*` deben configurarse en el proveedor
-de despliegue y no en el repositorio. `NEXT_PUBLIC_API_URL` debe apuntar a la URL
-HTTPS pública del backend, por ejemplo `https://talentia-api.onrender.com`.
-Después de cambiarla es necesario crear un nuevo despliegue porque Next.js las
-incluye durante el build.
+En producción, `NEXT_PUBLIC_API_URL` debe apuntar al backend HTTPS y las variables deben configurarse en el proveedor antes del build.
 
-## HU-01: Registrar cuenta
+## Historias de usuario implementadas
 
-El flujo de candidato permite crear una cuenta mediante `POST /auth/register`.
-El frontend valida en vivo el formato del correo, los cinco requisitos de la
-contraseña y la coincidencia de `Contraseña` y `Confirmar contraseña`. Las
-contraseñas se envían únicamente por HTTPS al backend; nunca se guardan en el
-frontend. Después del registro, se guarda la sesión JWT de Supabase y se redirige
-a `Mi hoja de vida` (`/candidato/cv`).
+Todas las historias HU-01 a HU-34 cuentan con flujo de interfaz e integración con el backend.
 
-El mensaje para un correo existente es `Este correo ya está registrado` y el
-mensaje para contraseñas diferentes es `Las contraseñas deben ser iguales.`.
+| ID    | Pantalla o flujo frontend                          | Resultado visible                                                       |
+| ----- | -------------------------------------------------- | ----------------------------------------------------------------------- |
+| HU-01 | `/login` en modo registro                          | El candidato crea su cuenta y entra a su espacio.                       |
+| HU-02 | `/login`                                           | Valida credenciales y redirige según rol.                               |
+| HU-03 | `/candidato/perfil`                                | Edita nombre, teléfono, ciudad, LinkedIn y portafolio.                  |
+| HU-04 | `/candidato/cv`                                    | Selecciona y carga un PDF de hoja de vida.                              |
+| HU-05 | `/candidato/cv`                                    | Registra cargo, empresa, años y resumen profesional.                    |
+| HU-06 | `/candidato/cv`                                    | Refleja la experiencia autocompletada por el análisis del CV.           |
+| HU-07 | `/candidato/cv` y resultados                       | Consume certificaciones extraídas y las presenta en el perfil evaluado. |
+| HU-08 | `/candidato/vacantes`                              | Presenta Match IA y evidencia de skills técnicas.                       |
+| HU-09 | `/admin/vacantes/crear`                            | Permite registrar nombre o cargo de la vacante.                         |
+| HU-10 | `/admin/vacantes/crear`                            | Permite registrar la descripción del cargo.                             |
+| HU-11 | `/admin/vacantes/crear`                            | Permite definir el salario mensual.                                     |
+| HU-12 | `/admin/vacantes/crear`                            | Permite agregar competencias técnicas.                                  |
+| HU-13 | `/admin/vacantes`                                  | Permite publicar y cambiar el estado de la vacante.                     |
+| HU-14 | `/admin/vacantes`                                  | Muestra las vacantes activas del reclutador.                            |
+| HU-15 | `/candidato/vacantes`                              | Permite seleccionar una vacante y consultar su detalle.                 |
+| HU-16 | `/candidato/postulaciones/entrevista`              | Muestra preguntas y registra respuestas técnicas.                       |
+| HU-17 | `/candidato/vacantes`                              | Envía una postulación y la muestra en postulaciones.                    |
+| HU-18 | Entrevista técnica                                 | Conserva respuestas y permite retomar la sesión.                        |
+| HU-19 | `/candidato/resultados` y detalle recruiter        | Muestra el resumen generado de las entrevistas.                         |
+| HU-20 | `/admin/banco`                                     | Permite consultar los candidatos de una vacante.                        |
+| HU-21 | Vacantes y resultados                              | Presenta la comparación entre perfil y requisitos.                      |
+| HU-22 | `/candidato/vacantes`                              | Muestra el porcentaje de compatibilidad.                                |
+| HU-23 | `/admin/candidatos/[id]`                           | Muestra factores que justifican el puntaje.                             |
+| HU-24 | `/admin/candidatos/[id]`                           | Permite al reclutador visualizar la explicación.                        |
+| HU-25 | `/admin/banco`                                     | Ordena candidatos y destaca oro, plata y bronce.                        |
+| HU-26 | `/admin/candidatos/[id]` y `/admin/reportes`       | Presenta resumen, competencias, DOFA, match y evidencia.                |
+| HU-27 | `/candidato/resultados`                            | Presenta fortalezas y oportunidades de mejora.                          |
+| HU-28 | `/candidato/postulaciones`                         | Muestra el estado de cada aplicación y su siguiente acción.             |
+| HU-29 | `/admin/vacantes/crear?edit=:id`                   | Permite editar una vacante publicada.                                   |
+| HU-30 | `/candidato/postulaciones/entrevista-blanda`       | Graba la entrevista conductual con cámara y micrófono.                  |
+| HU-31 | Entrevista de habilidades blandas                  | Envía y asocia el video a la postulación.                               |
+| HU-32 | `/candidato/resultados` y `/admin/candidatos/[id]` | Muestra estado y resultado del análisis IA.                             |
+| HU-33 | Resultados de entrevista                           | Muestra Match general y puntajes técnico/conductual.                    |
+| HU-34 | `/candidato/prueba-tecnica`                        | Muestra el acceso cuando el Match alcanza el 75% requerido.             |
 
-## HU-02: Iniciar sesión
+## Flujos de candidato
 
-El formulario usa `POST /auth/login` del backend y Supabase Authentication para
-validar las credenciales. Antes de enviar, valida en vivo correo, campos
-obligatorios y los requisitos de la contraseña. Las respuestas se muestran al
-usuario con mensajes claros: `Este correo no tiene una cuenta en TalentIA` o
-`La contraseña no coincide con la contraseña de la cuenta`.
+1. En `/login`, el candidato se registra o inicia sesión.
+2. En `/candidato/perfil` completa información personal y documento de identidad.
+3. En `/candidato/cv` carga el PDF y registra o revisa su experiencia.
+4. En `/candidato/vacantes` consulta vacantes publicadas, detalle, Match IA y opción de postularse.
+5. En `/candidato/postulaciones` consulta estados, inicia entrevistas y revisa resultados.
+6. La entrevista técnica registra respuestas con límite de tiempo. Después, la entrevista blanda solicita permisos de cámara y micrófono, graba las respuestas y envía el video.
+7. En `/candidato/resultados` consulta el estado del análisis, puntajes, retroalimentación y recomendación. En `/candidato/prueba-tecnica` accede cuando el sistema habilita la prueba por Match.
 
-Con credenciales correctas se guarda la sesión JWT de Supabase y se redirige al
-panel correspondiente: `/admin/dashboard` para recruiters o
-`/candidato/cv` para candidatos.
+## Flujos de reclutador
 
-## HU-03: Perfil del candidato
+El reclutador trabaja desde `/admin/dashboard`, crea y publica vacantes en `/admin/vacantes/crear`, las consulta y edita en `/admin/vacantes`, y revisa candidatos en `/admin/banco`. Desde el detalle `/admin/candidatos/[id]` consulta perfil, resumen IA, puntajes, explicación, respuestas y video. `/admin/reportes` consolida los análisis completados.
 
-`/candidato/perfil` requiere una sesión activa de Supabase
-Authentication con JWT y rol `candidate`. El correo se muestra deshabilitado y
-solo lectura. El nombre, teléfono, ciudad y enlaces se guardan mediante
-`PATCH /candidate/profile`.
+## Integración y estados
 
-El contexto global actualiza el nombre y las iniciales por defecto en el
-sidebar, encabezado y demás vistas después de guardar.
-
-## HU-04: Subir hoja de vida
-
-La carga de la hoja de vida es una funcionalidad independiente del perfil. El
-candidato selecciona un archivo PDF desde la interfaz de `/candidato/cv` y el
-frontend lo envía al backend mediante `POST /candidate/cv/file`.
-
-El flujo contempla:
-
-- validación del formato PDF y del tamaño máximo de 5 MB;
-- envío autenticado con la sesión JWT del candidato;
-- almacenamiento en el bucket de hojas de vida de Supabase Storage;
-- asociación del archivo con el perfil del candidato;
-- consulta de la hoja de vida mediante una URL firmada temporal;
-- mensajes de error para selección, carga y validación del archivo.
-
-## HU-05: Registrar experiencia
-
-El registro de experiencia laboral es independiente del perfil personal y de la
-carga de la hoja de vida. Desde `Mi hoja de vida` (`/candidato/cv`), el candidato
-autenticado registra y gestiona:
-
-- cargo actual;
-- empresa;
-- años de experiencia;
-- resumen profesional.
-
-La información se guarda mediante `PATCH /candidate/cv` y se consulta mediante
-`GET /candidate/cv`. El frontend valida los campos antes de enviarlos y el
-backend repite las validaciones para proteger la integridad de los datos.
-
-Criterios de aceptación:
-
-- Registro exitoso: al completar los campos y guardar, la experiencia queda almacenada y actualizada en el perfil del candidato.
-- Campo obligatorio vacío: si `Cargo actual` u otro campo obligatorio está vacío, se muestra `Campo obligatorio` resaltado en rojo y no se envía el formulario.
-
-El formulario se integra con NestJS, acceso exclusivo del candidato autenticado
-y corresponde a una funcionalidad documentada en Swagger.
-
-## HU-06, HU-07 y HU-08: Inteligencia del CV y Match IA
-
-Después de cargar el PDF, el backend analiza la hoja de vida con Gemini. El frontend
-recibe el resultado de `GET /candidate/resume/analysis`, que incluye experiencia
-laboral, certificaciones y habilidades técnicas estimadas. La experiencia más reciente
-puede autocompletar los datos de HU-05.
-
-En `/candidato/vacantes`, el candidato consulta las vacantes publicadas y el frontend
-solicita `GET /vacancies/:vacancyId/match`. El resultado muestra el porcentaje de
-compatibilidad y el número de skills evaluadas. La evidencia detallada se entrega por
-la API; una vista dedicada de certificaciones todavía está pendiente.
-
-## HU-09, HU-10, HU-11 y HU-12: Crear una vacante
-
-Desde `/admin/vacantes/crear`, el reclutador autenticado puede registrar:
-
-- nombre o cargo de la vacante;
-- descripción del cargo;
-- salario mensual;
-- competencias técnicas requeridas.
-
-El formulario envía los datos a `POST /vacancies`. La API valida los campos y el
-backend los persiste asociados a la organización del reclutador.
-
-## HU-13: Gestionar el estado de una vacante
-
-Desde `/admin/vacantes`, el reclutador consulta sus vacantes y puede cambiar su estado
-entre `draft`, `published`, `paused` y `closed`. El cambio se envía mediante
-`PATCH /vacancies/:vacancyId`. Los candidatos solo reciben las vacantes publicadas en
-`/candidato/vacantes`.
-
-## HU-32: Análisis de entrevistas mediante IA
-
-Al finalizar la entrevista en video, el backend inicia el análisis combinado de las
-respuestas técnicas y de habilidades blandas. La pantalla `/candidato/resultados`
-consulta `GET /candidate/interview-analyses` usando el JWT del candidato y muestra el
-estado del análisis, porcentaje general, fortalezas, oportunidades de mejora y la
-recomendación general cuando estén disponibles. Mientras Gemini procesa el resultado,
-la pantalla muestra un estado de espera; no inventa resultados locales.
-
-## HU-20 y HU-25: Candidatos y ranking por vacante
-
-Desde `/admin/banco`, el recruiter selecciona una vacante real de su organización.
-La vista consulta `GET /vacancies/:vacancyId/applications` y muestra en el mismo
-lugar el ranking IA y la tabla completa de candidatos postulados. El primer,
-segundo y tercer candidato se resaltan con medallas de oro, plata y bronce; el
-resto aparece en la lista normal ordenada por puntaje.
-
-## HU-19, HU-23 y HU-24: Resumen y explicación para recruiter
-
-Desde el enlace `Ver perfil` del banco de candidatos, el recruiter consulta el
-perfil asociado a la postulación concreta (`applicationId`) y a la vacante
-seleccionada; el mismo candidato puede abrirse de forma independiente para
-cada vacante. El recruiter consulta el resumen real generado por IA: puntaje técnico, puntaje de habilidades blandas,
-puntaje general, resumen de cada entrevista, fortalezas, factores de mejora y
-recomendación. La vista explica el puntaje mediante `scoreExplanation` y muestra
-un aviso cuando las entrevistas todavía no están listas para análisis.
-
-## Fuera del alcance actual
-
-La interfaz contiene vistas preparadas para ampliar candidatos, entrevistas y reportes,
-pero el flujo completo de postulación, entrevistas y evaluaciones no está cubierto por
-las HU-01 a HU-13 implementadas.
+El contexto de autenticación centraliza sesión, roles, perfil, CV, vacantes, postulaciones, entrevistas y análisis. Las respuestas de la API se muestran con estados de carga, error y procesamiento; el frontend no inventa resultados mientras Gemini analiza una entrevista.
 
 ## Ejecución
 
@@ -170,6 +84,4 @@ npm install
 npm run dev
 ```
 
-## Nota
-
-La primera base funcional ha sido preparada para que el proyecto se integre con Supabase y quede listo para crecimiento modular.
+La aplicación queda disponible normalmente en `http://localhost:3000`. El backend debe estar iniciado y la URL configurada en `NEXT_PUBLIC_API_URL`.
