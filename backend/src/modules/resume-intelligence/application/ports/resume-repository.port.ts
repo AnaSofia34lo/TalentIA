@@ -3,6 +3,7 @@ import { Certification } from '../../domain/entities/certification.entity.js';
 import { TechnicalSkill } from '../../domain/entities/technical-skill.entity.js';
 
 export const RESUME_REPOSITORY = Symbol('RESUME_REPOSITORY');
+export type ResumeAnalysisStatus = 'processing' | 'completed' | 'failed';
 
 export type ResumeAnalysisSnapshot = {
   workExperiences: WorkExperience[];
@@ -11,6 +12,11 @@ export type ResumeAnalysisSnapshot = {
 };
 
 export interface ResumeRepositoryPort {
+  setAnalysisStatus(
+    storageAssetId: string,
+    status: ResumeAnalysisStatus,
+  ): Promise<void>;
+
   replaceAnalysis(
     userId: string,
     data: {

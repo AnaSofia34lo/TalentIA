@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -13,6 +14,8 @@ import { UpdateCandidateProfileDto } from './dto/update-candidate-profile.dto.js
 
 @Injectable()
 export class CandidatesService {
+  private readonly logger = new Logger(CandidatesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseService,
@@ -89,6 +92,7 @@ export class CandidatesService {
             sizeBytes: asset.sizeBytes,
             createdAt: asset.createdAt,
             downloadUrl: await this.createDownloadUrl(asset.fileUrl),
+            resumeAnalysisStatus: asset.resumeAnalysisStatus,
           }
         : null,
       cvProfile: {
@@ -97,6 +101,18 @@ export class CandidatesService {
         yearsOfExperience: profile?.yearsOfExperience ?? null,
         summary: profile?.summary ?? '',
       },
+    };
+  }
+
+  async getCvAnalysisStatus(userId: string) {
+    const asset = await this.prisma.storageAsset.findFirst({
+      where: { userId, kind: 'cv' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, resumeAnalysisStatus: true },
+    });
+    return {
+      cvId: asset?.id ?? null,
+      status: asset?.resumeAnalysisStatus ?? null,
     };
   }
 
@@ -223,13 +239,33 @@ export class CandidatesService {
         mimeType: file.mimetype,
         kind: 'cv',
         sizeBytes: file.size,
+        resumeAnalysisStatus: 'processing',
       },
     });
 
-    this.eventEmitter.emit('candidate.cv.uploaded', {
-      userId,
-      storageAssetId: asset.id,
-    });
+    const markAnalysisAsFailed = async (reason: string) => {
+      this.logger.error(`No se pudo iniciar el análisis del CV ${asset.id}: ${reason}`);
+      await this.prisma.storageAsset
+        .updateMany({
+          where: { id: asset.id, kind: 'cv' },
+          data: { resumeAnalysisStatus: 'failed' },
+        })
+        .catch((statusError: unknown) => {
+          this.logger.error(`No se pudo guardar el estado del CV ${asset.id}: ${String(statusError)}`);
+        });
+    };
+
+    void this.eventEmitter
+      .emitAsync('candidate.cv.uploaded', {
+        userId,
+        storageAssetId: asset.id,
+      })
+      .then((listeners) => {
+        if (listeners.length === 0) {
+          return markAnalysisAsFailed('No hay un proceso de análisis registrado.');
+        }
+      })
+      .catch((error: unknown) => markAnalysisAsFailed(String(error)));
 
     return {
       message: 'Hoja de vida cargada correctamente',

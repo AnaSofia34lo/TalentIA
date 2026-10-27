@@ -16,25 +16,34 @@ export class ResumeTextExtractor {
   async extract(buffer: Buffer, mimeType: string | null, fileName: string): Promise<string> {
     const normalizedMime = (mimeType ?? '').toLowerCase();
     const lowerName = fileName.toLowerCase();
+    const isPdf = normalizedMime.includes('pdf') || lowerName.endsWith('.pdf');
 
     let text = '';
-    if (normalizedMime.includes('pdf') || lowerName.endsWith('.pdf')) {
-      text = await this.fromPdf(buffer);
-    } else if (
-      normalizedMime.includes('wordprocessingml') ||
-      normalizedMime.includes('msword') ||
-      lowerName.endsWith('.docx') ||
-      lowerName.endsWith('.doc')
-    ) {
-      text = await this.fromDocx(buffer);
-    } else {
-      throw new UnreadableResumeError(
-        `Formato de archivo no soportado para extracción: ${mimeType ?? fileName}`,
+    try {
+      if (isPdf) {
+        text = await this.fromPdf(buffer);
+      } else if (
+        normalizedMime.includes('wordprocessingml') ||
+        normalizedMime.includes('msword') ||
+        lowerName.endsWith('.docx') ||
+        lowerName.endsWith('.doc')
+      ) {
+        text = await this.fromDocx(buffer);
+      } else {
+        throw new UnreadableResumeError(
+          `Formato de archivo no soportado: ${mimeType ?? fileName}`,
+        );
+      }
+    } catch (error) {
+      if (!isPdf) throw error;
+      this.logger.warn(
+        `No se pudo extraer texto local del PDF; se intentará lectura visual con Gemini: ${String(error)}`,
       );
+      text = '';
     }
 
     const cleaned = text.split('\0').join('').trim();
-    if (cleaned.length < 40) {
+    if (cleaned.length < 40 && !isPdf) {
       throw new UnreadableResumeError(
         'No se pudo extraer texto legible del documento (posible PDF escaneado o vacío).',
       );

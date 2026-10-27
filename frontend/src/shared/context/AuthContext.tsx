@@ -40,6 +40,7 @@ export interface CandidateProfileResponse {
     sizeBytes?: number | null;
     createdAt: string;
     downloadUrl?: string | null;
+    resumeAnalysisStatus?: "processing" | "completed" | "failed" | null;
   } | null;
   cvProfile?: {
     professionalTitle: string;
@@ -47,6 +48,28 @@ export interface CandidateProfileResponse {
     yearsOfExperience: number | null;
     summary: string;
   };
+}
+
+export interface CandidateResumeAnalysisResponse {
+  workExperiences: Array<{
+    id: string;
+    company: string | null;
+    role: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    description: string | null;
+  }>;
+  certifications: Array<{
+    id: string;
+    name: string | null;
+    issuer: string | null;
+    date: string | null;
+  }>;
+  technicalSkills: Array<{
+    id: string;
+    name: string;
+    estimatedProficiency: number | null;
+  }>;
 }
 
 export interface InterviewAnalysisResponse {
@@ -257,6 +280,11 @@ interface AuthContextType {
   ) => Promise<void>;
   refreshCandidateProfile: () => Promise<CandidateProfileResponse>;
   refreshCandidateCv: () => Promise<CandidateProfileResponse>;
+  getCandidateCvAnalysisStatus: () => Promise<{
+    cvId: string | null;
+    status: "processing" | "completed" | "failed" | null;
+  }>;
+  getCandidateResumeAnalysis: () => Promise<CandidateResumeAnalysisResponse>;
   updateCandidateProfile: (
     data: Record<string, unknown>,
   ) => Promise<CandidateProfileResponse>;
@@ -934,6 +962,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile as CandidateProfileResponse;
   };
 
+  const getCandidateCvAnalysisStatus = async () => {
+    return requestCandidate("cv/analysis-status") as Promise<{
+      cvId: string | null;
+      status: "processing" | "completed" | "failed" | null;
+    }>;
+  };
+
+  const getCandidateResumeAnalysis = async () => {
+    return requestApi("candidate/resume/analysis") as Promise<CandidateResumeAnalysisResponse>;
+  };
+
   const updateCandidateProfile = async (data: Record<string, unknown>) => {
     const profile = await requestCandidate("profile", {
       method: "PATCH",
@@ -1009,6 +1048,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         registerRecruiter,
         refreshCandidateProfile,
         refreshCandidateCv,
+        getCandidateCvAnalysisStatus,
+        getCandidateResumeAnalysis,
         updateCandidateProfile,
         updateCandidateCv,
         uploadCandidateCv,

@@ -59,6 +59,12 @@ export class CandidatesController {
     return this.candidates.getCv(userId);
   }
 
+  @Get('cv/analysis-status')
+  @ApiOperation({ summary: 'Consulta el estado del análisis del CV más reciente' })
+  getCvAnalysisStatus(@CurrentUser('id') userId: string) {
+    return this.candidates.getCvAnalysisStatus(userId);
+  }
+
   @Get('applications')
   @ApiOperation({ summary: 'Lista las postulaciones del candidato autenticado' })
   @ApiResponse({ status: 200, description: 'Postulaciones del candidato' })
