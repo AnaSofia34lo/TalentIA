@@ -7,9 +7,17 @@ interface IconProps {
 
 export function LogoSparkIcon({ className = '', size = 18 }: IconProps) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 3l1.8 4.9L19 9.7l-4.9 1.8L12 16.4l-1.8-4.9L5 9.7l4.9-1.8L12 3z" />
-      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={`inline-block flex-shrink-0 ${className}`}
+      aria-hidden="true"
+    >
+      {/* 4-pointed curved flare star matching the new logo identity */}
+      <path d="M12 2 C12 7.2 7.2 12 2 12 C7.2 12 12 16.8 12 22 C12 16.8 16.8 12 22 12 C16.8 12 12 7.2 12 2 Z" />
     </svg>
   );
 }

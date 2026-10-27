@@ -2,11 +2,10 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { useAuth } from "../../shared/context/AuthContext";
-import {
-  LogoSparkIcon,
-  MailIcon,
-} from "../../shared/components/ui/Icons";
+import { MailIcon } from "../../shared/components/ui/Icons";
+import { TalentNetworkHero } from "../../shared/components/TalentNetworkHero";
 import { PasswordInput } from "../../shared/components/PasswordInput";
 import { UserRole } from "../../shared/types";
 
@@ -125,36 +124,41 @@ function LoginContent() {
     <div className="login-screen min-h-screen flex flex-col lg:flex-row">
       <div
         className="hidden lg:flex flex-1 items-center justify-center p-12 relative overflow-hidden"
-        style={{ background: "var(--grad-brand)" }}
+        style={{
+          background:
+            "radial-gradient(ellipse at 20% 25%, rgba(67, 56, 202, 0.45) 0%, transparent 55%), radial-gradient(ellipse at 80% 80%, rgba(124, 58, 237, 0.35) 0%, transparent 55%), linear-gradient(150deg, #091F52 0%, #11286C 35%, #251B6E 70%, #341864 100%)",
+        }}
       >
         <div
-          className="absolute w-[520px] h-[520px] rounded-full blur-[10px] -top-[140px] -left-[140px] pointer-events-none"
+          className="absolute w-[560px] h-[560px] rounded-full blur-[80px] -top-[120px] -left-[120px] pointer-events-none"
           style={{
             background:
-              "radial-gradient(circle, rgba(108,99,255,.55), transparent 70%)",
+              "radial-gradient(circle, rgba(99,102,241,0.35), transparent 70%)",
           }}
         />
-        <div className="relative z-10 text-center text-white max-w-[460px]">
-          <div className="mx-auto mb-8 w-28 h-28 rounded-[32px] bg-white/15 flex items-center justify-center text-5xl">
-            ✦
-          </div>
-          <h2 className="text-white text-3xl font-bold mb-3">
-            Contrata con la certeza de los datos
-          </h2>
-          <p className="text-white/80 text-sm leading-relaxed">
-            TalentIA analiza hojas de vida, conduce entrevistas y evalúa
-            competencias con IA para que tu equipo decida con evidencia.
-          </p>
+
+        <div className="relative z-10 w-full max-w-[480px]">
+          <TalentNetworkHero />
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-white">
         <div className="w-full max-w-[430px]">
-          <div className="flex items-center gap-2.5 mb-6">
-            <div className="brand-mark">
-              <LogoSparkIcon size={18} />
+          <div className="flex items-center gap-3 mb-6">
+            <div
+              className="relative overflow-hidden shadow-sm flex-shrink-0"
+              style={{ width: '42px', height: '42px', borderRadius: '12px' }}
+            >
+              <Image
+                src="/brand-logo.png"
+                alt="TalentIA"
+                width={42}
+                height={42}
+                className="w-full h-full object-cover"
+                priority
+              />
             </div>
-            <div className="brand-name text-xl">
+            <div className="brand-name text-2xl font-black tracking-tight">
               Talent<span>IA</span>
             </div>
           </div>
