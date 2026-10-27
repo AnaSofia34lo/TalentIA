@@ -102,4 +102,32 @@ export class CandidatesController {
   ) {
     return this.candidates.uploadCv(userId, file);
   }
+
+  @Post('identity-document')
+  @ApiOperation({ summary: 'Carga una imagen o PDF del documento de identidad' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadIdentityDocument(
+    @CurrentUser('id') userId: string,
+    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 })], fileIsRequired: true })) file: Express.Multer.File,
+  ) {
+    return this.candidates.uploadIdentityDocument(userId, file);
+  }
+}
+
+@ApiTags('Reclutador')
+@ApiBearerAuth('JWT-auth')
+@Roles('recruiter')
+@Controller('recruiter/applications')
+export class RecruiterCandidateDocumentsController {
+  constructor(private readonly candidates: CandidatesService) {}
+
+  @Get(':applicationId/identity-document')
+  @ApiOperation({ summary: 'Obtiene acceso temporal al documento del candidato de una postulacion propia' })
+  getIdentityDocument(
+    @CurrentUser('id') recruiterId: string,
+    @Param('applicationId') applicationId: string,
+  ) {
+    return this.candidates.getRecruiterIdentityDocument(recruiterId, applicationId);
+  }
 }

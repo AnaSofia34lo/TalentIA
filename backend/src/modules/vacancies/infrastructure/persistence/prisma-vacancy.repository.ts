@@ -140,6 +140,24 @@ export class PrismaVacancyRepository implements VacancyRepositoryPort {
     return { vacancySkills: vacancy.skills, candidateSkills };
   }
 
+  async findPublishedMatchData(candidateId: string) {
+    const [vacancies, candidateSkills] = await Promise.all([
+      this.prisma.vacancy.findMany({
+        where: { status: 'published' },
+        select: { id: true, skills: { select: { name: true, weight: true } } },
+      }),
+      this.prisma.candidateTechnicalSkill.findMany({
+        where: { userId: candidateId },
+        select: { name: true, estimatedProficiency: true },
+      }),
+    ]);
+    return vacancies.map((vacancy) => ({
+      vacancyId: vacancy.id,
+      vacancySkills: vacancy.skills,
+      candidateSkills,
+    }));
+  }
+
   private toEntity(row: {
     id: string;
     title: string;
