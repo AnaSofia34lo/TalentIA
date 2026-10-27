@@ -104,7 +104,15 @@ function DofaCard({
 export default function CandidatoPerfilPage() {
   const searchParams = useSearchParams();
   const applicationId = searchParams.get('applicationId');
-  const { getRecruiterApplicationAnalysis, getRecruiterInterviewReview } = useAuth();
+  const origin = searchParams.get('from') === 'reportes' ? 'reportes' : 'talentos';
+  const returnHref = origin === 'reportes' ? '/admin/reportes' : '/admin/banco';
+  const returnLabel = origin === 'reportes' ? 'Volver a reportes' : 'Volver a Banco de talentos';
+  const {
+    getRecruiterApplicationAnalysis,
+    getRecruiterCandidateCvDownloadUrl,
+    getRecruiterIdentityDocument,
+    getRecruiterInterviewReview,
+  } = useAuth();
   const [report, setReport] = useState<RecruiterCandidateAnalysisResponse | null>(
     null,
   );
@@ -116,6 +124,8 @@ export default function CandidatoPerfilPage() {
   const [interviewsLoading, setInterviewsLoading] = useState(true);
   const [error, setError] = useState('');
   const [interviewsError, setInterviewsError] = useState('');
+  const [cvDownloading, setCvDownloading] = useState(false);
+  const [identityDownloading, setIdentityDownloading] = useState(false);
 
   useEffect(() => {
     if (!applicationId) {
@@ -126,9 +136,14 @@ export default function CandidatoPerfilPage() {
       return;
     }
     let active = true;
+    setLoading(true);
+    setError('');
+    setReport(null);
     void getRecruiterApplicationAnalysis(applicationId)
       .then((data) => {
-        if (active) setReport(data);
+        if (active) {
+          setReport(data);
+        }
       })
       .catch((requestError) => {
         if (active) {
@@ -140,7 +155,9 @@ export default function CandidatoPerfilPage() {
         }
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       });
     return () => {
       active = false;
@@ -149,10 +166,14 @@ export default function CandidatoPerfilPage() {
   }, [applicationId]);
 
   useEffect(() => {
-    if (!applicationId) return;
+    if (!applicationId) {
+      setInterviewsLoading(false);
+      return;
+    }
     let active = true;
     setInterviewsLoading(true);
     setInterviewsError('');
+    setInterviewReviews({ technical: null, behavioral: null });
     void Promise.allSettled([
       getRecruiterInterviewReview(applicationId, 'technical'),
       getRecruiterInterviewReview(applicationId, 'behavioral'),
@@ -178,7 +199,6 @@ export default function CandidatoPerfilPage() {
     return () => {
       active = false;
     };
-    // El contexto expone las funciones de solicitud con referencia nueva en cada render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicationId]);
 
@@ -205,12 +225,7 @@ export default function CandidatoPerfilPage() {
             {error || 'La postulación no está disponible.'}
           </p>
           <div className="flex gap-2 mt-5 justify-center">
-            <Link href="/admin/banco" className="btn btn-outline">
-              Volver al banco
-            </Link>
-            <Link href="/admin/reportes" className="btn btn-outline">
-              Ir a Reportes
-            </Link>
+            <Link href={returnHref} className="btn btn-outline">{returnLabel}</Link>
           </div>
         </div>
       </div>
@@ -255,8 +270,7 @@ export default function CandidatoPerfilPage() {
   const technicalPercentage =
     report.competencies?.technicalPercentage ?? analysis.technicalScore;
 
-  const evidences = report.evidences ?? [];
-  const videoHref = `/admin/candidatos/${candidate.id}/video?applicationId=${encodeURIComponent(application.id)}`;
+  const videoHref = `/admin/candidatos/${candidate.id}/video?applicationId=${encodeURIComponent(application.id)}&from=${origin}`;
   const interviewReviewHref = (
     type: 'technical' | 'behavioral',
     interviewId?: string,
@@ -273,16 +287,17 @@ export default function CandidatoPerfilPage() {
       : review?.interview
         ? [review.interview]
         : [];
+    const interview = review?.interview ?? interviews[0] ?? null;
 
     return (
       <section className="rounded-2xl border border-[var(--line)] p-4" key={type}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h4 className="font-bold">{title}</h4>
-            <p className="text-xs text-[var(--ink-faint)]">
-              {interviews.length} {interviews.length === 1 ? 'intento' : 'intentos'} en esta postulación
-            </p>
-          </div>
+          <h4 className="font-bold">{title}</h4>
+          {interview && (
+            <Link href={interviewReviewHref(type, interview.id)} className="btn btn-outline btn-sm shrink-0">
+              {type === 'technical' ? 'Abrir respuestas' : 'Abrir entrevista'}
+            </Link>
+          )}
         </div>
 
         {interviews.length === 0 ? (
@@ -306,18 +321,12 @@ export default function CandidatoPerfilPage() {
                 >
                   <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4">
                     <span>
-                      <span className="font-semibold">Intento {interviews.length - interviewIndex}</span>
-                      {interviewIndex === 0 && <span className="badge badge-navy ml-2 text-[10px]">Más reciente</span>}
+                      <span className="font-semibold">Resumen de la entrevista</span>
                       <span className="mt-1 block text-xs text-[var(--ink-faint)]">
                         {formatInterviewDate(interview.startedAt ?? interview.createdAt)} · {interviewStatusLabel(interview.status)} · {questions.length} {questions.length === 1 ? 'pregunta' : 'preguntas'}
                       </span>
                     </span>
                   </summary>
-                  <div className="flex justify-end px-4 pb-3">
-                    <Link href={interviewReviewHref(type, interview.id)} className="btn btn-outline btn-sm">
-                      {type === 'technical' ? 'Abrir respuestas' : 'Abrir entrevista'}
-                    </Link>
-                  </div>
                   {questions.length === 0 ? (
                     <p className="px-4 pb-4 text-sm text-[var(--ink-soft)]">No hay preguntas registradas en este intento.</p>
                   ) : (
@@ -352,11 +361,51 @@ export default function CandidatoPerfilPage() {
   };
 
   const handleDownloadCv = () => {
-    if (!candidate.cvDownloadUrl) {
+    if (!candidate.cvFileName) {
       setError('Este candidato aún no tiene una hoja de vida disponible para descargar.');
       return;
     }
-    window.open(candidate.cvDownloadUrl, '_blank', 'noopener,noreferrer');
+    const downloadWindow = window.open('about:blank', '_blank');
+    if (!downloadWindow) {
+      setError('Permite las ventanas emergentes para descargar la hoja de vida.');
+      return;
+    }
+    setCvDownloading(true);
+    void getRecruiterCandidateCvDownloadUrl(application.id)
+      .then(({ downloadUrl }) => {
+        downloadWindow.location.href = downloadUrl;
+      })
+      .catch((downloadError) => {
+        downloadWindow.close();
+        setError(
+          downloadError instanceof Error
+            ? downloadError.message
+            : 'No fue posible preparar la descarga de la hoja de vida.',
+        );
+      })
+      .finally(() => setCvDownloading(false));
+  };
+
+  const handleDownloadIdentityDocument = () => {
+    const downloadWindow = window.open('about:blank', '_blank');
+    if (!downloadWindow) {
+      setError('Permite las ventanas emergentes para descargar el documento.');
+      return;
+    }
+    setIdentityDownloading(true);
+    void getRecruiterIdentityDocument(application.id)
+      .then(({ downloadUrl }) => {
+        downloadWindow.location.href = downloadUrl;
+      })
+      .catch((downloadError) => {
+        downloadWindow.close();
+        setError(
+          downloadError instanceof Error
+            ? downloadError.message
+            : 'No fue posible descargar el documento de identidad.',
+        );
+      })
+      .finally(() => setIdentityDownloading(false));
   };
 
   return (
@@ -379,9 +428,9 @@ export default function CandidatoPerfilPage() {
             <FileTextIcon size={16} />
             Descargar perfil completo (PDF)
           </button>
-          <Link href="/admin/reportes" className="btn btn-ghost">
+          <Link href={returnHref} className="btn btn-ghost">
             <ArrowLeftIcon size={16} />
-            Volver a reportes
+            {returnLabel}
           </Link>
         </div>
       </div>
@@ -420,10 +469,19 @@ export default function CandidatoPerfilPage() {
             type="button"
             className="btn btn-primary"
             onClick={handleDownloadCv}
-            disabled={!candidate.cvDownloadUrl}
+            disabled={!candidate.cvFileName || cvDownloading}
           >
             <DownloadIcon size={16} />
-            Descargar CV
+            {cvDownloading ? 'Preparando CV…' : 'Descargar CV'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={handleDownloadIdentityDocument}
+            disabled={identityDownloading}
+          >
+            <DownloadIcon size={16} />
+            {identityDownloading ? 'Preparando documento…' : 'Descargar documento'}
           </button>
           <Link href={videoHref} className="btn btn-outline">
             <VideoIcon size={18} />
@@ -531,44 +589,10 @@ export default function CandidatoPerfilPage() {
             </div>
           </div>
 
-          <div className="card card-pad mb-4.5">
-            <h3 className="text-base font-bold mb-1">Hallazgos destacados del análisis</h3>
-            <p className="text-xs text-[var(--ink-faint)] mb-4">
-              Selección resumida de evidencias que respaldan la evaluación de esta postulación.
-            </p>
-            {evidences.length === 0 ? (
-              <p className="text-sm text-[var(--ink-soft)]">
-                No hay evidencias detalladas (respuestas o marcadores) asociadas todavía.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {evidences.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--line)] pb-3 last:border-0 last:pb-0"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <b className="text-sm">{item.competency}</b>
-                        <span className="badge badge-navy text-[10px]">{item.kind}</span>
-                      </div>
-                      <p className="text-sm text-[var(--ink-soft)] leading-relaxed">
-                        {item.summary}
-                      </p>
-                    </div>
-                    <Link href={item.href} className="btn btn-outline btn-sm shrink-0">
-                      Ver evidencia
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div className="card card-pad mb-4.5" aria-busy={interviewsLoading}>
-            <h3 className="text-base font-bold mb-1">Preguntas y respuestas completas</h3>
+            <h3 className="text-base font-bold mb-1">Entrevista completa</h3>
             <p className="text-xs text-[var(--ink-faint)] mb-4">
-              Aquí se muestra el cuestionario completo de cada entrevista, no solo los hallazgos seleccionados por el análisis.
+              Cuestionario completo de la entrevista técnica y la entrevista de habilidades blandas de esta postulación.
             </p>
             {interviewsError && (
               <p className="mb-4 rounded-lg bg-[var(--amber-tint)] p-3 text-sm text-[var(--ink)]" role="status">

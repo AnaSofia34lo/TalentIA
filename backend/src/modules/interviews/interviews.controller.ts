@@ -2,6 +2,7 @@ import { Body, Controller, MaxFileSizeValidator, Param, ParseFilePipe, Patch, Po
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { MAX_UPLOAD_BYTES } from '../../common/constants/upload.constants.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { InterviewsService } from './interviews.service.js';
 import { StartTechnicalInterviewDto } from './dto/start-technical-interview.dto.js';
@@ -54,12 +55,12 @@ export class InterviewsController {
   }
 
   @Post(':interviewId/video')
-  @UseInterceptors(FileInterceptor('video'))
+  @UseInterceptors(FileInterceptor('video', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
   @ApiOperation({ summary: 'Guarda el video de la entrevista de habilidades blandas' })
   uploadVideo(
     @CurrentUser('id') candidateId: string,
     @Param('interviewId') interviewId: string,
-    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: 100 * 1024 * 1024 })], fileIsRequired: true })) file: Express.Multer.File,
+    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES })], fileIsRequired: true })) file: Express.Multer.File,
   ) {
     return this.interviews.uploadVideo(candidateId, interviewId, file);
   }

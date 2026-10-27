@@ -257,7 +257,7 @@ export default function CandidatoPerfilPage() {
               <div>
                 <label htmlFor="identity-file" className="btn btn-outline cursor-pointer">{identityFile ? "Cambiar archivo" : candidateProfile?.identityDocument ? "Reemplazar documento" : "Seleccionar documento"}</label>
                 <input id="identity-file" className="sr-only" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => setIdentityFile(event.target.files?.[0] ?? null)} disabled={identityUploading} />
-                <p className="mt-2 text-xs text-[var(--ink-faint)]">PDF, JPG, PNG o WEBP - Maximo 10 MB</p>
+                <p className="mt-2 text-xs text-[var(--ink-faint)]">PDF, JPG, PNG o WEBP - Maximo 50 MB</p>
               </div>
               {identityFile && <button type="submit" className="btn btn-primary" disabled={identityUploading}>{identityUploading ? "Subiendo documento..." : "Guardar documento"}</button>}
             </div>

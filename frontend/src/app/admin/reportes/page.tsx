@@ -156,7 +156,7 @@ export default function AdminReportesPage() {
                     {exportingId === row.applicationId ? 'Generando PDF…' : 'Descargar PDF'}
                   </button>
                   <Link
-                    href={`/admin/candidatos/${row.candidateId}?applicationId=${encodeURIComponent(row.applicationId)}&vacancyId=${encodeURIComponent(row.vacancyId)}`}
+                    href={`/admin/candidatos/${row.candidateId}?applicationId=${encodeURIComponent(row.applicationId)}&vacancyId=${encodeURIComponent(row.vacancyId)}&from=reportes`}
                     className="btn btn-primary btn-sm shrink-0"
                   >
                     Ver perfil completo

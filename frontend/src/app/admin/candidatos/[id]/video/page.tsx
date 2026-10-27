@@ -34,6 +34,7 @@ export default function CandidatoVideoPage() {
   const searchParams = useSearchParams();
   const candidateId = params.id;
   const applicationId = searchParams.get('applicationId');
+  const origin = searchParams.get('from') === 'reportes' ? 'reportes' : 'talentos';
   const interviewIdParam = searchParams.get('interviewId');
   const interviewTypeParam = searchParams.get('interviewType');
   const interviewType: 'technical' | 'behavioral' =
@@ -125,10 +126,10 @@ export default function CandidatoVideoPage() {
   }, [interviewType, interview, markerId, markers, tParam]);
 
   const profileHref = applicationId
-    ? `/admin/candidatos/${candidateId}?applicationId=${encodeURIComponent(applicationId)}`
+    ? `/admin/candidatos/${candidateId}?applicationId=${encodeURIComponent(applicationId)}&from=${origin}`
     : '/admin/reportes';
   const interviewAttemptHref = (id: string) =>
-    `/admin/candidatos/${candidateId}/video?applicationId=${encodeURIComponent(applicationId ?? '')}&interviewType=${interviewType}&interviewId=${encodeURIComponent(id)}`;
+    `/admin/candidatos/${candidateId}/video?applicationId=${encodeURIComponent(applicationId ?? '')}&from=${origin}&interviewType=${interviewType}&interviewId=${encodeURIComponent(id)}`;
 
   if (loading) {
     return (

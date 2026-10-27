@@ -264,6 +264,26 @@ export class InterviewAnalysisController {
     );
   }
 
+  @Get('recruiter/applications/:applicationId/cv-download')
+  @Roles('recruiter')
+  @ApiOperation({
+    summary: 'Genera el enlace temporal para descargar la hoja de vida',
+  })
+  @ApiParam({ name: 'applicationId', description: 'UUID de la postulación' })
+  @ApiResponse({ status: 200, description: 'Enlace temporal de descarga' })
+  @ApiResponse({ status: 404, description: 'Postulación o CV no encontrado' })
+  getRecruiterCandidateCvDownloadUrl(
+    @CurrentUser('id') recruiterId: string,
+    @Param('applicationId') applicationId: string,
+    @CurrentUser('organizationId') organizationId?: string,
+  ) {
+    return this.analyses.getRecruiterCandidateCvDownloadUrl(
+      recruiterId,
+      applicationId,
+      organizationId,
+    );
+  }
+
   @Get('recruiter/applications/:applicationId/interview-review')
   @Roles('recruiter')
   @ApiOperation({

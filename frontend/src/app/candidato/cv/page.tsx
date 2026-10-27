@@ -173,8 +173,8 @@ export default function CandidatoCvPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("El archivo no puede superar 5 MB.");
+    if (file.size > 50 * 1024 * 1024) {
+      setError("El archivo no puede superar 50 MB.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -323,7 +323,7 @@ export default function CandidatoCvPage() {
               <PlusIcon size={16} />
               {uploading ? "Subiendo CV…" : cv ? "Reemplazar CV" : "Seleccionar archivo"}
             </button>
-            <span className="text-xs text-[var(--ink-faint)]">PDF · máximo 5 MB</span>
+            <span className="text-xs text-[var(--ink-faint)]">PDF ? m?ximo 50 MB</span>
             {uploadInput}
           </div>
 

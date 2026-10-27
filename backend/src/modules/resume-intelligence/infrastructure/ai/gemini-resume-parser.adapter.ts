@@ -101,51 +101,92 @@ export class GeminiResumeParserAdapter implements ResumeParserPort {
 
     const parts: Array<
       | { text: string }
-      | { inlineData: { mimeType: string; data: string } }
-    > = [{ text: prompt }];
-    if (document) {
-      parts.push({
-        inlineData: { mimeType: document.mimeType, data: document.base64 },
-      });
-    }
-
+      | { fileData: { mimeType: string; fileUri: string } }
+    > = [];
+    let uploadedFile: Awaited<ReturnType<typeof ai.files.upload>> | null = null;
     let rawText: string | undefined;
 
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: [{ role: 'user', parts }],
+    try {
+      if (document) {
+        const documentBuffer = Buffer.from(document.base64, 'base64');
+        uploadedFile = await ai.files.upload({
+          file: new Blob([new Uint8Array(documentBuffer)], {
+            type: document.mimeType,
+          }),
           config: {
-            responseMimeType: 'application/json',
-            responseSchema: RESUME_SCHEMA,
-            temperature: 0.1,
+            mimeType: document.mimeType,
+            displayName: 'hoja-de-vida.pdf',
           },
         });
-        rawText = response.text;
-        if (rawText?.trim()) {
-          break;
+        let readyFile = uploadedFile;
+        const processingDeadline = Date.now() + 3 * 60 * 1000;
+        while (
+          readyFile.state === 'PROCESSING' &&
+          Date.now() < processingDeadline
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          readyFile = await ai.files.get({ name: uploadedFile.name! });
         }
-      } catch (error) {
-        const isTransient = this.isTransientError(error);
-        if (isTransient && attempt < this.maxRetries) {
-          const delay = Math.min(
-            this.baseDelayMs * Math.pow(2, attempt) + Math.random() * 500,
-            8000,
+        if (readyFile.state !== 'ACTIVE' || !readyFile.uri) {
+          throw new InvalidResumeParseError(
+            'Gemini no pudo preparar el PDF para analizarlo. Intenta nuevamente.',
           );
-          this.logger.warn(
-            `Gemini experimentó un error transitorio o alta demanda (intento ${attempt + 1}/${this.maxRetries + 1}): ${String(error)}. Reintentando en ${Math.round(delay)}ms...`,
-          );
-          await this.sleep(delay);
-          continue;
         }
+        parts.push({
+          fileData: {
+            mimeType: document.mimeType,
+            fileUri: readyFile.uri,
+          },
+        });
+      }
+      parts.push({ text: prompt });
 
-        this.logger.error(
-          `Gemini falló tras ${attempt + 1} intento(s): ${String(error)}`,
-        );
-        throw new InvalidResumeParseError(
-          'La IA no pudo procesar el CV. Intenta de nuevo más tarde.',
-        );
+      for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: [{ role: 'user', parts }],
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: RESUME_SCHEMA,
+              temperature: 0.1,
+            },
+          });
+          rawText = response.text;
+          if (rawText?.trim()) {
+            break;
+          }
+        } catch (error) {
+          const isTransient = this.isTransientError(error);
+          if (isTransient && attempt < this.maxRetries) {
+            const delay = Math.min(
+              this.baseDelayMs * Math.pow(2, attempt) + Math.random() * 500,
+              8000,
+            );
+            this.logger.warn(
+              `Gemini experiment?? un error transitorio o alta demanda (intento ${attempt + 1}/${this.maxRetries + 1}): ${String(error)}. Reintentando en ${Math.round(delay)}ms...`,
+            );
+            await this.sleep(delay);
+            continue;
+          }
+
+          this.logger.error(
+            `Gemini fall?? tras ${attempt + 1} intento(s): ${String(error)}`,
+          );
+          throw new InvalidResumeParseError(
+            'La IA no pudo procesar el CV. Intenta de nuevo m??s tarde.',
+          );
+        }
+      }
+    } finally {
+      if (uploadedFile?.name) {
+        await ai.files
+          .delete({ name: uploadedFile.name })
+          .catch((error: unknown) => {
+            this.logger.warn(
+              `No se pudo borrar el PDF temporal de Gemini: ${String(error)}`,
+            );
+          });
       }
     }
 

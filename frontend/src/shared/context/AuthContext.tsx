@@ -468,6 +468,7 @@ interface AuthContextType {
     applicationId: string,
   ) => Promise<InterviewAnalysisResponse>;
   getRecruiterApplicationAnalysis: (applicationId: string) => Promise<RecruiterCandidateAnalysisResponse>;
+  getRecruiterCandidateCvDownloadUrl: (applicationId: string) => Promise<{ downloadUrl: string }>;
   listRecruiterReports: () => Promise<RecruiterReportItem[]>;
   getRecruiterInterviewReview: (
     applicationId: string,
@@ -933,6 +934,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) as Promise<RecruiterCandidateAnalysisResponse>;
   };
 
+  const getRecruiterCandidateCvDownloadUrl = async (applicationId: string) => {
+    return requestApi(
+      `recruiter/applications/${applicationId}/cv-download`,
+    ) as Promise<{ downloadUrl: string }>;
+  };
+
   const getRecruiterDashboardStats = async () => {
     return requestApi('recruiter/dashboard/stats') as Promise<RecruiterDashboardStats>;
   };
@@ -1082,6 +1089,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getCandidateInterviewAnalysis,
         runCandidateInterviewAnalysis,
         getRecruiterApplicationAnalysis,
+        getRecruiterCandidateCvDownloadUrl,
         getRecruiterDashboardStats,
         listRecruiterReports,
         getRecruiterInterviewReview,
