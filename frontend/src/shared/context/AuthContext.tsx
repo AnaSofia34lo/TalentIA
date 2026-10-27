@@ -6,7 +6,6 @@ import { supabase } from "../lib/supabase";
 import { UserRole, UserProfile, Notificacion } from "../types";
 import {
   ADMIN_USER,
-  CANDIDATE_USER,
   NOTIFS_ADMIN,
   NOTIFS_CAND,
 } from "../data/mockData";
@@ -18,6 +17,13 @@ export interface CandidateProfileResponse {
   email: string;
   fullName: string;
   phone: string;
+  identityDocument?: {
+    id: string;
+    fileName: string;
+    mimeType: string | null;
+    sizeBytes: number | null;
+    createdAt: string;
+  } | null;
   candidateProfile: {
     location?: string | null;
     linkedinUrl?: string | null;
@@ -260,6 +266,14 @@ interface AuthContextType {
   uploadCandidateCv: (
     file: File,
   ) => Promise<{ fileName: string; downloadUrl: string | null }>;
+  uploadIdentityDocument: (file: File) => Promise<{ message: string }>;
+  getRecruiterIdentityDocument: (applicationId: string) => Promise<{
+    candidateName: string;
+    fileName: string;
+    mimeType: string | null;
+    downloadUrl: string;
+    expiresInSeconds: number;
+  }>;
   createVacancy: (data: {
     name: string;
     description: string;
@@ -434,6 +448,7 @@ interface AuthContextType {
   getVacancyMatch: (
     vacancyId: string,
   ) => Promise<{ matchPercentage: number; evaluatedSkills: number }>;
+  getVacancyMatches: () => Promise<Array<{ vacancyId: string; matchPercentage: number; evaluatedSkills: number }>>;
   logout: () => Promise<void>;
   markAllNotifsRead: () => void;
   bancoFilter: string;
@@ -468,6 +483,7 @@ export interface VacancyApplicant {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+let sessionReplacementRedirectPending = false;
 
 function initialsFromName(name: string) {
   return name
@@ -492,6 +508,16 @@ function userFromCandidate(profile: CandidateProfileResponse): UserProfile {
 async function parseResponse(response: Response) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (
+      payload.code === "SESSION_REPLACED" &&
+      !sessionReplacementRedirectPending
+    ) {
+      sessionReplacementRedirectPending = true;
+      await supabase.auth.signOut({ scope: "local" });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("talentia:session-replaced"));
+      }
+    }
     const message = Array.isArray(payload.message)
       ? payload.message[0]
       : payload.message;
@@ -586,6 +612,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    const handleSessionReplaced = () => {
+      router.replace("/login?reason=session-replaced");
+    };
+    window.addEventListener("talentia:session-replaced", handleSessionReplaced);
+    return () => window.removeEventListener("talentia:session-replaced", handleSessionReplaced);
+  }, [router]);
+
+  useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         setMemoryAccessToken(data.session.access_token, data.session.expires_at);
@@ -623,13 +657,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ? userFromCandidate(candidateProfile)
       : role === "recruiter"
         ? ADMIN_USER
-        : CANDIDATE_USER;
+        : {
+            name: "Candidato",
+            email: "",
+            roleTitle: "Candidato",
+            avatarInitials: "CA",
+            phone: "",
+          };
   const activeNotifs = role === "recruiter" ? adminNotifs : candNotifs;
   const unreadCount = activeNotifs.filter(
     (notification) => notification.unread,
   ).length;
 
   const applySession = async (auth: AuthResponse) => {
+    sessionReplacementRedirectPending = false;
     await supabase.auth.setSession({
       access_token: auth.access_token,
       refresh_token: auth.refresh_token,
@@ -822,6 +863,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return requestApi(`vacancies/${vacancyId}/match`);
   };
 
+  const getVacancyMatches = async () => {
+    return requestApi("vacancies/matches") as Promise<Array<{ vacancyId: string; matchPercentage: number; evaluatedSkills: number }>>;
+  };
+
   const listInterviewAnalyses = async () => {
     return requestApi("candidate/interview-analyses") as Promise<
       InterviewAnalysisResponse[]
@@ -913,14 +958,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return requestCandidate("cv/file", { method: "POST", body: formData });
   };
 
+  const uploadIdentityDocument = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const result = await requestCandidate("identity-document", {
+      method: "POST",
+      body: formData,
+    });
+    await refreshCandidateProfile();
+    return result as { message: string };
+  };
+
+  const getRecruiterIdentityDocument = async (applicationId: string) => {
+    return requestApi(
+      `recruiter/applications/${encodeURIComponent(applicationId)}/identity-document`,
+    );
+  };
+
   const logout = async () => {
     setMemoryAccessToken(null);
     setRecruiterVerified(false);
     setCandidateVerified(false);
-    await supabase.auth.signOut();
     setSessionRole(null);
     setCandidateProfile(null);
-    router.push("/login");
+    await supabase.auth.signOut();
+    router.replace("/login");
   };
 
   const markAllNotifsRead = () => {
@@ -950,6 +1012,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateCandidateProfile,
         updateCandidateCv,
         uploadCandidateCv,
+        uploadIdentityDocument,
+        getRecruiterIdentityDocument,
         createVacancy,
         generateInterviewQuestions,
         updateVacancy,
@@ -965,6 +1029,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         completeTechnicalInterview,
         uploadInterviewVideo,
         getVacancyMatch,
+        getVacancyMatches,
         listInterviewAnalyses,
         getCandidateInterviewAnalysis,
         runCandidateInterviewAnalysis,

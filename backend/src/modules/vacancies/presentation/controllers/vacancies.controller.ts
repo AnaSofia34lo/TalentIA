@@ -84,6 +84,13 @@ export class VacanciesController {
     return this.listVacancyApplicants.execute(recruiterId, vacancyId, organizationId);
   }
 
+  @Get('matches')
+  @Roles('candidate')
+  @ApiOperation({ summary: 'Calcula en una sola solicitud el match de vacantes publicadas' })
+  async matches(@CurrentUser('id') candidateId: string) {
+    return this.calculateVacancyMatch.executeForPublished(candidateId);
+  }
+
   @Get(':vacancyId/match')
   @Roles('candidate')
   @ApiOperation({

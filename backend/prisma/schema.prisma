@@ -64,6 +64,7 @@ enum InterviewType {
 
 enum FileKind {
   cv
+  identity_document
   cover_letter
   interview_video
   profile_photo
@@ -98,6 +99,7 @@ model User {
   phone          String?
   role           Role          @default(candidate)
   authProvider   AuthProvider  @default(local)
+  activeSessionId String?
   isActive       Boolean       @default(true)
   candidateStatus CandidateStatus @default(active)
   organizationId String?

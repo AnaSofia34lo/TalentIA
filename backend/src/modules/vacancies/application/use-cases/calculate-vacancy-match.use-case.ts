@@ -23,6 +23,22 @@ export class CalculateVacancyMatchUseCase {
     const data = await this.vacancies.findMatchData(vacancyId, candidateId);
     if (!data) throw new NotFoundException('La vacante publicada no existe.');
 
+    return this.calculate(vacancyId, candidateId, data);
+  }
+
+  async executeForPublished(candidateId: string) {
+    const entries = await this.vacancies.findPublishedMatchData(candidateId);
+    return entries.map(({ vacancyId, ...data }) => this.calculate(vacancyId, candidateId, data));
+  }
+
+  private calculate(
+    vacancyId: string,
+    candidateId: string,
+    data: {
+      vacancySkills: Array<{ name: string; weight: number }>;
+      candidateSkills: Array<{ name: string; estimatedProficiency: number }>;
+    },
+  ) {
     const evidence = data.vacancySkills.map((required) => {
       const candidate = data.candidateSkills.find((skill) =>
         this.sameSkill(skill.name, required.name),

@@ -14,11 +14,6 @@ import {
 } from "../../../shared/context/AuthContext";
 import { MatchRing } from "../../../shared/components/ui/MatchRing";
 
-type CandidateApplication = {
-  id: string;
-  vacancy: { title: string; organization: { name: string } };
-};
-
 function statusLabel(status: InterviewAnalysisResponse["status"]) {
   if (status === "completed") return "Compatibilidad disponible";
   if (status === "failed") return "Análisis no completado";
@@ -39,8 +34,7 @@ function statusMessage(status: InterviewAnalysisResponse["status"]) {
 
 export default function CandidatoResultadosPage() {
   const {
-    listCandidateApplications,
-    getCandidateInterviewAnalysis,
+    listInterviewAnalyses,
     runCandidateInterviewAnalysis,
   } = useAuth();
   const [results, setResults] = useState<InterviewAnalysisResponse[]>([]);
@@ -49,15 +43,7 @@ export default function CandidatoResultadosPage() {
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [pageError, setPageError] = useState("");
 
-  const loadResults = async () => {
-    const applications = (await listCandidateApplications()) as CandidateApplication[];
-    const items = await Promise.all(
-      applications.map((application) =>
-        getCandidateInterviewAnalysis(application.id),
-      ),
-    );
-    return items;
-  };
+  const loadResults = () => listInterviewAnalyses();
 
   useEffect(() => {
     let active = true;
@@ -65,6 +51,7 @@ export default function CandidatoResultadosPage() {
       .then(async (items) => {
         if (!active) return;
         setResults(items);
+        setLoading(false);
 
         const pending = items.filter(
           (item) =>

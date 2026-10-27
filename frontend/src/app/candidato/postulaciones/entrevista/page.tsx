@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightIcon, LogoSparkIcon } from '../../../../shared/components/ui/Icons';
 import { useAuth } from '../../../../shared/context/AuthContext';
@@ -39,7 +40,7 @@ function InterviewLoading() {
 function EntrevistaActivaPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { startTechnicalInterview, submitTechnicalAnswer, completeTechnicalInterview } = useAuth();
+  const { candidateProfile, startTechnicalInterview, submitTechnicalAnswer, completeTechnicalInterview } = useAuth();
   const vacancyId = searchParams.get('vacancyId');
   const vacancyTitle = searchParams.get('vacancy') || DEFAULT_VACANCY;
   const [dataTreatmentStep, setDataTreatmentStep] = useState<'duration' | 'privacy'>('duration');
@@ -62,7 +63,7 @@ function EntrevistaActivaPageContent() {
   const [loadError, setLoadError] = useState('');
 
   React.useEffect(() => {
-    if (!vacancyId || !dataTreatmentAccepted) return;
+    if (!vacancyId || !dataTreatmentAccepted || !candidateProfile?.identityDocument) return;
 
     let active = true;
     void startTechnicalInterview(vacancyId)
@@ -95,7 +96,7 @@ function EntrevistaActivaPageContent() {
     return () => {
       active = false;
     };
-  }, [dataTreatmentAccepted, startTechnicalInterview, vacancyId]);
+  }, [candidateProfile?.identityDocument, dataTreatmentAccepted, startTechnicalInterview, vacancyId]);
 
   useEffect(() => {
     if (!vacancyId) router.replace('/candidato/postulaciones');
@@ -230,6 +231,18 @@ function EntrevistaActivaPageContent() {
 
   if (!vacancyId) {
     return <InterviewLoading />;
+  }
+
+  if (!candidateProfile?.identityDocument) {
+    return (
+      <div className="center-shell">
+        <div className="center-card" role="alert">
+          <h3 className="text-lg font-bold mb-2">Sube tu documento de identidad</h3>
+          <p className="mb-5 text-sm text-[var(--ink-soft)]">Debes cargar una foto o PDF de tu documento desde tu perfil antes de presentar la entrevista.</p>
+          <Link className="btn btn-primary" href="/candidato/perfil">Ir a mi perfil</Link>
+        </div>
+      </div>
+    );
   }
 
   if (!dataTreatmentAccepted) {

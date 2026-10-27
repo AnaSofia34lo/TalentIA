@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import {
   CanActivate,
   ExecutionContext,
@@ -64,7 +65,31 @@ export class SupabaseAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token inválido o expirado.');
     }
 
-    const localUser = await this.prisma.user.findUnique({ where: { id: data.user.id } });
+    const localUser = await this.prisma.user.findUnique({
+      where: { id: data.user.id },
+      select: {
+        id: true,
+        role: true,
+        organizationId: true,
+        activeSessionId: true,
+      },
+    });
+    const sessionId = this.sessionIdFromAccessToken(token);
+    if (!sessionId) {
+      throw new UnauthorizedException('Token inv\u00e1lido o expirado.');
+    }
+
+    if (!localUser) {
+      throw new UnauthorizedException('La cuenta no est\u00e1 disponible.');
+    }
+
+    if (localUser.activeSessionId !== sessionId) {
+      throw new UnauthorizedException({
+        code: 'SESSION_REPLACED',
+        message: 'Tu sesi\u00f3n se cerr\u00f3 porque esta cuenta inici\u00f3 sesi\u00f3n en otro dispositivo.',
+      });
+    }
+
     const role = localUser?.role
       ?? (data.user.app_metadata?.role === 'admin' ? 'recruiter' : data.user.app_metadata?.role ?? 'candidate');
 
@@ -92,5 +117,18 @@ export class SupabaseAuthGuard implements CanActivate {
 
     request.user = authenticatedUser;
     return true;
+  }
+
+  private sessionIdFromAccessToken(token: string): string | null {
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) return null;
+      const claims = JSON.parse(
+        Buffer.from(payload, 'base64url').toString('utf8'),
+      ) as { session_id?: unknown };
+      return typeof claims.session_id === 'string' ? claims.session_id : null;
+    } catch {
+      return null;
+    }
   }
 }

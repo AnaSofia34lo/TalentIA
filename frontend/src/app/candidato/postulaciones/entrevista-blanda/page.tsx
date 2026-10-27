@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRightIcon, CheckIcon, VideoIcon } from '../../../../shared/components/ui/Icons';
 import { useAuth } from '../../../../shared/context/AuthContext';
@@ -23,7 +24,7 @@ function LoadingInterview() {
 function EntrevistaBlandaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { startBehavioralInterview, markVideoQuestion, completeTechnicalInterview, uploadInterviewVideo } = useAuth();
+  const { candidateProfile, startBehavioralInterview, markVideoQuestion, completeTechnicalInterview, uploadInterviewVideo } = useAuth();
   const vacancyId = searchParams.get('vacancyId');
   const fallbackTitle = searchParams.get('vacancy') || 'Entrevista de habilidades blandas';
   const [vacancyTitle, setVacancyTitle] = useState(fallbackTitle);
@@ -102,7 +103,7 @@ function EntrevistaBlandaContent() {
   };
 
   const beginInterview = async () => {
-    if (!vacancyId || !hasTestedDevices || !recordingConsent || isStarting) return;
+    if (!vacancyId || !candidateProfile?.identityDocument || !hasTestedDevices || !recordingConsent || isStarting) return;
     if (microphoneAnimationRef.current !== null) window.cancelAnimationFrame(microphoneAnimationRef.current);
     microphoneAnimationRef.current = null;
     await audioContextRef.current?.close();
@@ -307,6 +308,7 @@ function EntrevistaBlandaContent() {
   }, [handleFinish, isTimedOut, interviewId, isSubmitting]);
 
   if (!vacancyId) return <div className="center-shell"><div className="center-card"><h3 className="text-lg font-bold mb-2">No se encontró la vacante seleccionada</h3><p className="text-[var(--red)] text-sm">Regresa a tus postulaciones e inicia la entrevista desde una vacante.</p></div></div>;
+  if (!candidateProfile?.identityDocument) return <div className="center-shell"><div className="center-card" role="alert"><h3 className="text-lg font-bold mb-2">Sube tu documento de identidad</h3><p className="mb-5 text-sm text-[var(--ink-soft)]">Para verificar que la persona del video corresponde al documento, debes cargar una foto o PDF desde tu perfil antes de iniciar la entrevista.</p><Link className="btn btn-primary" href="/candidato/perfil">Ir a mi perfil</Link></div></div>;
   if (isLoading) return <LoadingInterview />;
   if (!cameraSupported) return <div className="center-shell"><div className="center-card"><h3 className="text-lg font-bold mb-2">Cámara no disponible</h3><p className="text-[var(--red)] text-sm">Tu navegador no permite acceder a la cámara y el micrófono.</p></div></div>;
   if (!interviewId) return (

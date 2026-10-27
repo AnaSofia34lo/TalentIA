@@ -55,9 +55,13 @@ export class SupabaseService {
     }
   }
 
-  getBucketName(type: 'cv' | 'video'): string {
+  getBucketName(type: 'cv' | 'video' | 'identity-document'): string {
     if (type === 'cv') {
       return process.env.SUPABASE_CV_BUCKET ?? 'hojas-de-vida';
+    }
+
+    if (type === 'identity-document') {
+      return process.env.SUPABASE_IDENTITY_DOCUMENT_BUCKET ?? 'documentos-identidad';
     }
 
     return process.env.SUPABASE_VIDEO_BUCKET ?? 'entrevistas-videos';

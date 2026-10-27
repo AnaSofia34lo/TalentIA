@@ -81,6 +81,16 @@ export class InterviewsService {
       return this.serialize(existing, application.vacancy);
     }
 
+    const identityDocument = await this.prisma.storageAsset.findFirst({
+      where: { userId: candidateId, kind: 'identity_document' },
+      select: { id: true },
+    });
+    if (!identityDocument) {
+      throw new BadRequestException(
+        'Debes subir tu documento de identidad en tu perfil antes de iniciar la entrevista.',
+      );
+    }
+
     const interview = await this.prisma.interview.create({
       data: {
         applicationId: application.id,

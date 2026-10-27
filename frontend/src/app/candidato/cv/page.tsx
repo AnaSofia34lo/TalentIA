@@ -27,8 +27,10 @@ export default function CandidatoCvPage() {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
+    if (!candidateProfile) return;
+
     const source =
-      candidateProfile?.cvProfile ?? candidateProfile?.candidateProfile;
+      candidateProfile.cvProfile ?? candidateProfile.candidateProfile;
     if (source) {
       setProfessionalTitle(source.professionalTitle ?? "");
       setCurrentCompany(source.currentCompany ?? "");
@@ -39,7 +41,9 @@ export default function CandidatoCvPage() {
       );
       setSummary(source.summary ?? "");
     }
-    if (!candidateProfile?.cvProfile) void refreshCandidateCv();
+    if (!candidateProfile.cvProfile) {
+      void refreshCandidateCv().catch(() => undefined);
+    }
   }, [candidateProfile]);
 
   const handleSave = async (event: React.FormEvent) => {

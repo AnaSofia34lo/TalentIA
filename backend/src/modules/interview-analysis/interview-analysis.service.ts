@@ -198,20 +198,53 @@ export class InterviewAnalysisService {
   }
 
   async getCandidateAnalyses(candidateId: string) {
-    const analyses = await this.prisma.interviewAnalysis.findMany({
-      where: { application: { candidateId } },
-      include: {
+    const applications = await this.prisma.candidateApplication.findMany({
+      where: { candidateId },
+      orderBy: { submittedAt: 'desc' },
+      select: {
+        id: true,
+        vacancy: {
+          select: { title: true, organization: { select: { name: true } } },
+        },
+        interviewAnalysis: true,
+        interviews: { select: { type: true, status: true, videoUrl: true } },
+      },
+    });
+
+    return applications.map((application) => {
+      if (application.interviewAnalysis) {
+        return this.serialize(application.interviewAnalysis, application);
+      }
+      const technicalReady = application.interviews.some(
+        (interview) => interview.type === 'technical' && interview.status === 'completed',
+      );
+      const behavioralReady = application.interviews.some(
+        (interview) => interview.type === 'behavioral' &&
+          interview.status === 'completed' && Boolean(interview.videoUrl),
+      );
+      return {
+        id: application.id,
         application: {
-          include: {
-            vacancy: { include: { organization: { select: { name: true } } } },
+          id: application.id,
+          vacancy: {
+            title: application.vacancy.title,
+            organization: application.vacancy.organization.name,
           },
         },
-      },
-      orderBy: { updatedAt: 'desc' },
+        status: technicalReady && behavioralReady ? 'ready_to_analyze' : 'not_available',
+        technicalScore: null,
+        behavioralScore: null,
+        overallScore: null,
+        technicalSummary: null,
+        behavioralSummary: null,
+        strengths: [],
+        improvements: [],
+        recommendation: null,
+        failureReason: null,
+        analyzedAt: null,
+        interviewsReady: technicalReady && behavioralReady,
+      };
     });
-    return analyses.map((analysis) =>
-      this.serialize(analysis, analysis.application),
-    );
   }
 
   async getCandidateAnalysis(candidateId: string, applicationId: string) {
@@ -1164,15 +1197,23 @@ export class InterviewAnalysisService {
 
   private async downloadVideo(storagePath: string) {
     const maxBytes = Number(process.env.MAX_AI_VIDEO_BYTES ?? 20 * 1024 * 1024);
-    const bucket = this.supabase.getBucketName('video');
     const path = this.resolveStoragePath(storagePath);
+    const asset = await this.prisma.storageAsset.findFirst({
+      where: { kind: 'interview_video', fileUrl: path },
+      orderBy: { createdAt: 'desc' },
+      select: { bucketName: true },
+    });
+    const bucket = asset?.bucketName ?? this.supabase.getBucketName('video');
     const { data, error } = await this.supabase
       .getClient()
       .storage.from(bucket)
       .download(path);
     if (error || !data) {
+      this.logger.warn(
+        `Video de entrevista no encontrado en Storage (bucket=${bucket}, path=${path}). Comprueba que el archivo siga en el bucket y que el registro de la entrevista apunte a la ruta correcta.`,
+      );
       throw new Error(
-        `No se pudo obtener el video: ${error?.message ?? 'archivo no encontrado'}`,
+        'No se encontro el video guardado. Verifica que no se haya movido o eliminado del bucket de videos y luego vuelve a intentar el analisis.',
       );
     }
     const buffer = Buffer.from(await data.arrayBuffer());
