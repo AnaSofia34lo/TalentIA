@@ -192,29 +192,36 @@ export interface RecruiterReportItem {
   analyzedAt: string | null;
 }
 
+export interface RecruiterInterviewReviewSession {
+  id: string;
+  type: string;
+  status: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  videoUrl: string | null;
+  videoDownloadUrl: string | null;
+  answers: Array<{
+    id: string;
+    responseText: string | null;
+    question: { id: string; category: string; prompt: string };
+  }>;
+  markers: Array<{
+    id: string;
+    timestampMs: number;
+    questionId: string;
+    question: { id: string; category: string; prompt: string };
+  }>;
+  questions: Array<{ id: string; category: string; prompt: string }>;
+}
+
 export interface RecruiterInterviewReviewResponse {
   candidate: { id: string; fullName: string };
   vacancy: { id: string; title: string };
   applicationId: string;
-  interview: {
-    id: string;
-    type: string;
-    status: string;
-    videoUrl: string | null;
-    videoDownloadUrl: string | null;
-    answers: Array<{
-      id: string;
-      responseText: string | null;
-      question: { id: string; category: string; prompt: string };
-    }>;
-    markers: Array<{
-      id: string;
-      timestampMs: number;
-      questionId: string;
-      question: { id: string; category: string; prompt: string };
-    }>;
-    questions: Array<{ id: string; category: string; prompt: string }>;
-  } | null;
+  interview: RecruiterInterviewReviewSession | null;
+  interviews: RecruiterInterviewReviewSession[];
 }
 
 export interface RecruiterDashboardStats {

@@ -351,6 +351,7 @@ export class InterviewAnalysisService {
             id: true,
             type: true,
             status: true,
+            createdAt: true,
             videoUrl: true,
             answers: {
               select: {
@@ -384,17 +385,20 @@ export class InterviewAnalysisService {
       (interview) =>
         interview.type === 'technical' && interview.status === 'completed',
     );
-    const behavioralInterview = application.interviews.find(
-      (interview) =>
-        interview.type === 'behavioral' &&
-        interview.status === 'completed' &&
-        Boolean(interview.videoUrl),
-    );
+    const behavioralInterview =
+      application.interviews.find(
+        (interview) =>
+          interview.id === application.interviewAnalysis?.behavioralInterviewId &&
+          interview.type === 'behavioral',
+      ) ??
+      this.pickCompletedInterview(application.interviews, 'behavioral');
     const behavioralReady = Boolean(behavioralInterview);
-    const technicalInterview = application.interviews.find(
-      (interview) =>
-        interview.type === 'technical' && interview.status === 'completed',
-    );
+    const technicalInterview =
+      application.interviews.find(
+        (interview) =>
+          interview.id === application.interviewAnalysis?.technicalInterviewId &&
+          interview.type === 'technical',
+      ) ?? this.pickCompletedInterview(application.interviews, 'technical');
 
     const cvAsset = application.candidate.documents[0];
     const cvDownloadUrl = cvAsset
@@ -547,8 +551,7 @@ export class InterviewAnalysisService {
         vacancy: { select: { id: true, title: true } },
         interviews: {
           where: { type: interviewType },
-          orderBy: { updatedAt: 'desc' },
-          take: 1,
+          orderBy: { createdAt: 'desc' },
           include: {
             answers: {
               select: {
@@ -586,37 +589,41 @@ export class InterviewAnalysisService {
       );
     }
 
-    const interview = application.interviews[0] ?? null;
-    let videoDownloadUrl: string | null = null;
-    if (interview?.videoUrl) {
-      videoDownloadUrl = await this.createVideoDownloadUrl(interview.videoUrl);
-    }
+    const interviews = await Promise.all(
+      application.interviews.map(async (interview) => ({
+        id: interview.id,
+        type: interview.type,
+        status: interview.status,
+        startedAt: interview.startedAt,
+        completedAt: interview.completedAt,
+        createdAt: interview.createdAt,
+        updatedAt: interview.updatedAt,
+        videoUrl: interview.videoUrl,
+        videoDownloadUrl: interview.videoUrl
+          ? await this.createVideoDownloadUrl(interview.videoUrl)
+          : null,
+        answers: interview.answers.map((answer) => ({
+          id: answer.id,
+          responseText: answer.responseText,
+          question: answer.question,
+        })),
+        markers: interview.videoMarkers.map((marker) => ({
+          id: marker.id,
+          timestampMs: marker.timestampMs,
+          questionId: marker.questionId,
+          question: marker.question,
+        })),
+        questions: interview.questions,
+      })),
+    );
+    const interview = interviews[0] ?? null;
 
     return {
       candidate: application.candidate,
       vacancy: application.vacancy,
       applicationId: application.id,
-      interview: interview
-        ? {
-            id: interview.id,
-            type: interview.type,
-            status: interview.status,
-            videoUrl: interview.videoUrl,
-            videoDownloadUrl,
-            answers: interview.answers.map((answer) => ({
-              id: answer.id,
-              responseText: answer.responseText,
-              question: answer.question,
-            })),
-            markers: interview.videoMarkers.map((marker) => ({
-              id: marker.id,
-              timestampMs: marker.timestampMs,
-              questionId: marker.questionId,
-              question: marker.question,
-            })),
-            questions: interview.questions,
-          }
-        : null,
+      interview,
+      interviews,
     };
   }
 
@@ -895,7 +902,7 @@ export class InterviewAnalysisService {
           answer.responseText?.slice(0, 180) ||
           answer.question.prompt.slice(0, 180),
         score: null,
-        href: `/admin/candidatos/${input.candidateId}/video?applicationId=${encodeURIComponent(input.applicationId)}&interviewType=technical&answerId=${encodeURIComponent(answer.id)}&questionId=${encodeURIComponent(answer.question.id)}`,
+        href: `/admin/candidatos/${input.candidateId}/video?applicationId=${encodeURIComponent(input.applicationId)}&interviewType=technical&interviewId=${encodeURIComponent(input.technicalInterviewId ?? '')}&answerId=${encodeURIComponent(answer.id)}&questionId=${encodeURIComponent(answer.question.id)}`,
       });
     }
 
@@ -907,7 +914,7 @@ export class InterviewAnalysisService {
         kind: 'soft',
         summary: marker.question.prompt.slice(0, 180),
         score: null,
-        href: `/admin/candidatos/${input.candidateId}/video?applicationId=${encodeURIComponent(input.applicationId)}&interviewType=behavioral&markerId=${encodeURIComponent(marker.id)}&t=${seconds}`,
+        href: `/admin/candidatos/${input.candidateId}/video?applicationId=${encodeURIComponent(input.applicationId)}&interviewType=behavioral&interviewId=${encodeURIComponent(input.behavioralInterviewId ?? '')}&markerId=${encodeURIComponent(marker.id)}&t=${seconds}`,
       });
     }
 

@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -21,6 +20,7 @@ import {
   LogoutIcon,
   CheckIcon
 } from '../ui/Icons';
+import { TalentIAMark } from '../ui/TalentIAMark';
 
 const NOTIF_ICON_MAP = {
   user: <UserIcon size={16} />,
@@ -93,14 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="brand-mark relative overflow-hidden"
             style={{ width: '36px', height: '36px', padding: 0, borderRadius: '10px' }}
           >
-            <Image
-              src="/brand-logo.png"
-              alt="TalentIA"
-              width={36}
-              height={36}
-              className="w-full h-full object-cover"
-              priority
-            />
+            <TalentIAMark className="w-full h-full" />
           </div>
           <div>
             <div className="brand-name">

@@ -2,12 +2,12 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { useAuth } from "../../shared/context/AuthContext";
 import { MailIcon } from "../../shared/components/ui/Icons";
 import { TalentNetworkHero } from "../../shared/components/TalentNetworkHero";
 import { PasswordInput } from "../../shared/components/PasswordInput";
 import { UserRole } from "../../shared/types";
+import { TalentIAMark } from "../../shared/components/ui/TalentIAMark";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const passwordRules = [
@@ -149,14 +149,7 @@ function LoginContent() {
               className="relative overflow-hidden shadow-sm flex-shrink-0"
               style={{ width: '42px', height: '42px', borderRadius: '12px' }}
             >
-              <Image
-                src="/brand-logo.png"
-                alt="TalentIA"
-                width={42}
-                height={42}
-                className="w-full h-full object-cover"
-                priority
-              />
+              <TalentIAMark className="w-full h-full" />
             </div>
             <div className="brand-name text-2xl font-black tracking-tight">
               Talent<span>IA</span>

@@ -81,7 +81,6 @@ function EntrevistaBlandaContent() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
-      if (audioContextRef.current) await audioContextRef.current.close();
       const audioContext = new window.AudioContext();
       audioContextRef.current = audioContext;
       const analyser = audioContext.createAnalyser();

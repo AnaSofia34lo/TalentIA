@@ -13,6 +13,7 @@ import {
 import { MatchRing } from '../../../../shared/components/ui/MatchRing';
 import {
   RecruiterCandidateAnalysisResponse,
+  RecruiterInterviewReviewResponse,
   useAuth,
 } from '../../../../shared/context/AuthContext';
 import { exportCandidateSummaryPdf } from '../../../../shared/lib/exportCandidateSummaryPdf';
@@ -36,6 +37,27 @@ function ProgressBar({ label, percentage }: { label: string; percentage: number 
       </div>
     </div>
   );
+}
+
+function formatInterviewDate(date: string | null) {
+  if (!date) return 'Fecha no disponible';
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime())
+    ? 'Fecha no disponible'
+    : new Intl.DateTimeFormat('es-CO', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(parsed);
+}
+
+function interviewStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    scheduled: 'Programada',
+    in_progress: 'En curso',
+    completed: 'Completada',
+    canceled: 'Cancelada',
+  };
+  return labels[status] ?? status;
 }
 
 function DofaCard({
@@ -82,12 +104,18 @@ function DofaCard({
 export default function CandidatoPerfilPage() {
   const searchParams = useSearchParams();
   const applicationId = searchParams.get('applicationId');
-  const { getRecruiterApplicationAnalysis } = useAuth();
+  const { getRecruiterApplicationAnalysis, getRecruiterInterviewReview } = useAuth();
   const [report, setReport] = useState<RecruiterCandidateAnalysisResponse | null>(
     null,
   );
+  const [interviewReviews, setInterviewReviews] = useState<{
+    technical: RecruiterInterviewReviewResponse | null;
+    behavioral: RecruiterInterviewReviewResponse | null;
+  }>({ technical: null, behavioral: null });
   const [loading, setLoading] = useState(true);
+  const [interviewsLoading, setInterviewsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [interviewsError, setInterviewsError] = useState('');
 
   useEffect(() => {
     if (!applicationId) {
@@ -117,6 +145,40 @@ export default function CandidatoPerfilPage() {
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applicationId]);
+
+  useEffect(() => {
+    if (!applicationId) return;
+    let active = true;
+    setInterviewsLoading(true);
+    setInterviewsError('');
+    void Promise.allSettled([
+      getRecruiterInterviewReview(applicationId, 'technical'),
+      getRecruiterInterviewReview(applicationId, 'behavioral'),
+    ]).then(([technicalResult, behavioralResult]) => {
+      if (!active) return;
+      setInterviewReviews({
+        technical: technicalResult.status === 'fulfilled' ? technicalResult.value : null,
+        behavioral: behavioralResult.status === 'fulfilled' ? behavioralResult.value : null,
+      });
+      const failedResult = [technicalResult, behavioralResult].find(
+        (result) => result.status === 'rejected',
+      );
+      if (failedResult?.status === 'rejected') {
+        setInterviewsError(
+          failedResult.reason instanceof Error
+            ? failedResult.reason.message
+            : 'No fue posible cargar todas las preguntas de las entrevistas.',
+        );
+      }
+    }).finally(() => {
+      if (active) setInterviewsLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+    // El contexto expone las funciones de solicitud con referencia nueva en cada render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicationId]);
 
@@ -195,6 +257,99 @@ export default function CandidatoPerfilPage() {
 
   const evidences = report.evidences ?? [];
   const videoHref = `/admin/candidatos/${candidate.id}/video?applicationId=${encodeURIComponent(application.id)}`;
+  const interviewReviewHref = (
+    type: 'technical' | 'behavioral',
+    interviewId?: string,
+  ) =>
+    `${videoHref}&interviewType=${type}${interviewId ? `&interviewId=${encodeURIComponent(interviewId)}` : ''}`;
+
+  const renderInterviewQuestions = (
+    title: string,
+    type: 'technical' | 'behavioral',
+    review: RecruiterInterviewReviewResponse | null,
+  ) => {
+    const interviews = review?.interviews?.length
+      ? review.interviews
+      : review?.interview
+        ? [review.interview]
+        : [];
+
+    return (
+      <section className="rounded-2xl border border-[var(--line)] p-4" key={type}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="font-bold">{title}</h4>
+            <p className="text-xs text-[var(--ink-faint)]">
+              {interviews.length} {interviews.length === 1 ? 'intento' : 'intentos'} en esta postulación
+            </p>
+          </div>
+        </div>
+
+        {interviews.length === 0 ? (
+          <p className="text-sm text-[var(--ink-soft)]">
+            {interviewsLoading
+              ? 'Cargando preguntas…'
+              : `No hay una entrevista ${type === 'technical' ? 'técnica' : 'conductual'} registrada.`}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {interviews.map((interview, interviewIndex) => {
+              const answers = interview.answers ?? [];
+              const questions = interview.questions.length
+                ? interview.questions
+                : answers.map((answer) => answer.question);
+              return (
+                <details
+                  key={interview.id}
+                  className="rounded-xl border border-[var(--line)] bg-white"
+                  open={interviewIndex === 0}
+                >
+                  <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4">
+                    <span>
+                      <span className="font-semibold">Intento {interviews.length - interviewIndex}</span>
+                      {interviewIndex === 0 && <span className="badge badge-navy ml-2 text-[10px]">Más reciente</span>}
+                      <span className="mt-1 block text-xs text-[var(--ink-faint)]">
+                        {formatInterviewDate(interview.startedAt ?? interview.createdAt)} · {interviewStatusLabel(interview.status)} · {questions.length} {questions.length === 1 ? 'pregunta' : 'preguntas'}
+                      </span>
+                    </span>
+                  </summary>
+                  <div className="flex justify-end px-4 pb-3">
+                    <Link href={interviewReviewHref(type, interview.id)} className="btn btn-outline btn-sm">
+                      {type === 'technical' ? 'Abrir respuestas' : 'Abrir entrevista'}
+                    </Link>
+                  </div>
+                  {questions.length === 0 ? (
+                    <p className="px-4 pb-4 text-sm text-[var(--ink-soft)]">No hay preguntas registradas en este intento.</p>
+                  ) : (
+                    <div className="flex flex-col gap-3 px-4 pb-4">
+                      {questions.map((question, index) => {
+                        const answer = answers.find((item) => item.question.id === question.id);
+                        return (
+                          <article key={question.id} className="rounded-xl bg-[var(--bg)] p-4">
+                            <p className="mb-1 text-xs font-bold text-[var(--navy)]">
+                              Pregunta {index + 1} · {question.category || (type === 'technical' ? 'Técnica' : 'Blanda')}
+                            </p>
+                            <p className="text-sm font-semibold text-[var(--ink)]">{question.prompt}</p>
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--ink-soft)]">
+                              {answer?.responseText?.trim() || (
+                                type === 'behavioral' && interview.videoUrl
+                                  ? 'Respuesta disponible en la grabación de la entrevista.'
+                                  : 'No hay una respuesta registrada para esta pregunta.'
+                              )}
+                            </p>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </details>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    );
+  };
 
   const handleDownloadCv = () => {
     if (!candidate.cvDownloadUrl) {
@@ -377,10 +532,9 @@ export default function CandidatoPerfilPage() {
           </div>
 
           <div className="card card-pad mb-4.5">
-            <h3 className="text-base font-bold mb-1">Evidencia por competencia</h3>
+            <h3 className="text-base font-bold mb-1">Hallazgos destacados del análisis</h3>
             <p className="text-xs text-[var(--ink-faint)] mb-4">
-              Cada hallazgo se vincula a la entrevista técnica o al video conductual de esta
-              postulación.
+              Selección resumida de evidencias que respaldan la evaluación de esta postulación.
             </p>
             {evidences.length === 0 ? (
               <p className="text-sm text-[var(--ink-soft)]">
@@ -407,6 +561,28 @@ export default function CandidatoPerfilPage() {
                     </Link>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div className="card card-pad mb-4.5" aria-busy={interviewsLoading}>
+            <h3 className="text-base font-bold mb-1">Preguntas y respuestas completas</h3>
+            <p className="text-xs text-[var(--ink-faint)] mb-4">
+              Aquí se muestra el cuestionario completo de cada entrevista, no solo los hallazgos seleccionados por el análisis.
+            </p>
+            {interviewsError && (
+              <p className="mb-4 rounded-lg bg-[var(--amber-tint)] p-3 text-sm text-[var(--ink)]" role="status">
+                {interviewsError} Se muestran los datos que sí se pudieron recuperar.
+              </p>
+            )}
+            {interviewsLoading ? (
+              <div className="flex items-center gap-3 py-4 text-sm text-[var(--ink-soft)]">
+                <div className="spinner" /> Cargando preguntas y respuestas…
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {renderInterviewQuestions('Entrevista técnica', 'technical', interviewReviews.technical)}
+                {renderInterviewQuestions('Entrevista de habilidades blandas', 'behavioral', interviewReviews.behavioral)}
               </div>
             )}
           </div>
