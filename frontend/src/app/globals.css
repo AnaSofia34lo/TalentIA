@@ -29,7 +29,7 @@
   --sh-sm: 0 1px 2px rgba(14, 27, 44, 0.05), 0 1px 1px rgba(14, 27, 44, 0.04);
   --sh-md: 0 10px 30px rgba(18, 60, 115, 0.08);
   --sh-lg: 0 24px 60px rgba(18, 60, 115, 0.16);
-  --grad-brand: linear-gradient(135deg, #0C2C55 0%, #123C73 38%, #4C4CD9 78%, #6C63FF 100%);
+  --grad-brand: linear-gradient(135deg, #0947C7 0%, #1D4ED8 35%, #7C3AED 75%, #B938D8 100%);
   --grad-ring: conic-gradient(from -90deg, var(--purple), var(--navy-mid));
 }
 
@@ -381,22 +381,23 @@ textarea.input {
 }
 
 .brand-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   background: var(--grad-brand);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #FFF8A6;
   flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(18, 60, 115, 0.25);
+  box-shadow: 0 4px 12px rgba(13, 75, 210, 0.28);
 }
 
 .brand-name {
   font-family: var(--font-poppins), sans-serif;
-  font-weight: 700;
-  font-size: 17px;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 
