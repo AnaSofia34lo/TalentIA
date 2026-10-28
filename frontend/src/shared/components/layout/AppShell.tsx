@@ -20,6 +20,7 @@ import {
   LogoutIcon,
   CheckIcon
 } from '../ui/Icons';
+import { TalentIAMark } from '../ui/TalentIAMark';
 
 const NOTIF_ICON_MAP = {
   user: <UserIcon size={16} />,
@@ -88,8 +89,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ---------- SIDEBAR ---------- */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} id="sidebar">
         <div className="brand">
-          <div className="brand-mark">
-            <LogoSparkIcon size={18} />
+          <div
+            className="brand-mark relative overflow-hidden"
+            style={{ width: '36px', height: '36px', padding: 0, borderRadius: '10px' }}
+          >
+            <TalentIAMark className="w-full h-full" />
           </div>
           <div>
             <div className="brand-name">

@@ -23,8 +23,13 @@ export type ExtractedResume = {
   technicalSkills: ExtractedTechnicalSkill[];
 };
 
+export type ResumeDocumentInput = {
+  mimeType: string;
+  base64: string;
+};
+
 export const RESUME_PARSER = Symbol('RESUME_PARSER');
 
 export interface ResumeParserPort {
-  parse(resumeText: string): Promise<ExtractedResume>;
+  parse(resumeText: string, document?: ResumeDocumentInput): Promise<ExtractedResume>;
 }

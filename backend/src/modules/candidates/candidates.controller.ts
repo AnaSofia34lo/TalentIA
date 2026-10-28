@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { MAX_UPLOAD_BYTES } from '../../common/constants/upload.constants.js';
 import { CandidatesService } from './candidates.service.js';
 import { UpdateCandidateCvDto } from './dto/update-candidate-cv.dto.js';
 import { UpdateCandidateProfileDto } from './dto/update-candidate-profile.dto.js';
@@ -59,6 +60,12 @@ export class CandidatesController {
     return this.candidates.getCv(userId);
   }
 
+  @Get('cv/analysis-status')
+  @ApiOperation({ summary: 'Consulta el estado del análisis del CV más reciente' })
+  getCvAnalysisStatus(@CurrentUser('id') userId: string) {
+    return this.candidates.getCvAnalysisStatus(userId);
+  }
+
   @Get('applications')
   @ApiOperation({ summary: 'Lista las postulaciones del candidato autenticado' })
   @ApiResponse({ status: 200, description: 'Postulaciones del candidato' })
@@ -91,14 +98,14 @@ export class CandidatesController {
   @Post('cv/file')
   @ApiOperation({ summary: 'Carga o reemplaza el PDF de la hoja de vida' })
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary', description: 'Archivo PDF de máximo 5 MB.' } } } })
-  @UseInterceptors(FileInterceptor('file'))
+  @ApiBody({ schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary', description: 'Archivo PDF de máximo 50 MB.' } } } })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
   @ApiResponse({ status: 201, description: 'Hoja de vida cargada correctamente' })
-  @ApiResponse({ status: 400, description: 'Archivo obligatorio, no PDF o excede 5 MB' })
+  @ApiResponse({ status: 400, description: 'Archivo obligatorio, no PDF o excede 50 MB' })
   @ApiResponse({ status: 401, description: 'JWT ausente, inválido o expirado' })
   uploadCv(
     @CurrentUser('id') userId: string,
-    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 })], fileIsRequired: true })) file: Express.Multer.File,
+    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES })], fileIsRequired: true })) file: Express.Multer.File,
   ) {
     return this.candidates.uploadCv(userId, file);
   }
@@ -106,10 +113,10 @@ export class CandidatesController {
   @Post('identity-document')
   @ApiOperation({ summary: 'Carga una imagen o PDF del documento de identidad' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
   uploadIdentityDocument(
     @CurrentUser('id') userId: string,
-    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 })], fileIsRequired: true })) file: Express.Multer.File,
+    @UploadedFile(new ParseFilePipe({ validators: [new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES })], fileIsRequired: true })) file: Express.Multer.File,
   ) {
     return this.candidates.uploadIdentityDocument(userId, file);
   }

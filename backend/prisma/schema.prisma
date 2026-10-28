@@ -352,6 +352,7 @@ model StorageAsset {
   mimeType   String?
   kind       FileKind
   sizeBytes  Int?
+  resumeAnalysisStatus String?
   createdAt  DateTime @default(now())
 
   @@map("storage_assets")

@@ -40,6 +40,7 @@ export interface CandidateProfileResponse {
     sizeBytes?: number | null;
     createdAt: string;
     downloadUrl?: string | null;
+    resumeAnalysisStatus?: "processing" | "completed" | "failed" | null;
   } | null;
   cvProfile?: {
     professionalTitle: string;
@@ -47,6 +48,28 @@ export interface CandidateProfileResponse {
     yearsOfExperience: number | null;
     summary: string;
   };
+}
+
+export interface CandidateResumeAnalysisResponse {
+  workExperiences: Array<{
+    id: string;
+    company: string | null;
+    role: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    description: string | null;
+  }>;
+  certifications: Array<{
+    id: string;
+    name: string | null;
+    issuer: string | null;
+    date: string | null;
+  }>;
+  technicalSkills: Array<{
+    id: string;
+    name: string;
+    estimatedProficiency: number | null;
+  }>;
 }
 
 export interface InterviewAnalysisResponse {
@@ -169,29 +192,36 @@ export interface RecruiterReportItem {
   analyzedAt: string | null;
 }
 
+export interface RecruiterInterviewReviewSession {
+  id: string;
+  type: string;
+  status: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  videoUrl: string | null;
+  videoDownloadUrl: string | null;
+  answers: Array<{
+    id: string;
+    responseText: string | null;
+    question: { id: string; category: string; prompt: string };
+  }>;
+  markers: Array<{
+    id: string;
+    timestampMs: number;
+    questionId: string;
+    question: { id: string; category: string; prompt: string };
+  }>;
+  questions: Array<{ id: string; category: string; prompt: string }>;
+}
+
 export interface RecruiterInterviewReviewResponse {
   candidate: { id: string; fullName: string };
   vacancy: { id: string; title: string };
   applicationId: string;
-  interview: {
-    id: string;
-    type: string;
-    status: string;
-    videoUrl: string | null;
-    videoDownloadUrl: string | null;
-    answers: Array<{
-      id: string;
-      responseText: string | null;
-      question: { id: string; category: string; prompt: string };
-    }>;
-    markers: Array<{
-      id: string;
-      timestampMs: number;
-      questionId: string;
-      question: { id: string; category: string; prompt: string };
-    }>;
-    questions: Array<{ id: string; category: string; prompt: string }>;
-  } | null;
+  interview: RecruiterInterviewReviewSession | null;
+  interviews: RecruiterInterviewReviewSession[];
 }
 
 export interface RecruiterDashboardStats {
@@ -257,6 +287,11 @@ interface AuthContextType {
   ) => Promise<void>;
   refreshCandidateProfile: () => Promise<CandidateProfileResponse>;
   refreshCandidateCv: () => Promise<CandidateProfileResponse>;
+  getCandidateCvAnalysisStatus: () => Promise<{
+    cvId: string | null;
+    status: "processing" | "completed" | "failed" | null;
+  }>;
+  getCandidateResumeAnalysis: () => Promise<CandidateResumeAnalysisResponse>;
   updateCandidateProfile: (
     data: Record<string, unknown>,
   ) => Promise<CandidateProfileResponse>;
@@ -433,6 +468,7 @@ interface AuthContextType {
     applicationId: string,
   ) => Promise<InterviewAnalysisResponse>;
   getRecruiterApplicationAnalysis: (applicationId: string) => Promise<RecruiterCandidateAnalysisResponse>;
+  getRecruiterCandidateCvDownloadUrl: (applicationId: string) => Promise<{ downloadUrl: string }>;
   listRecruiterReports: () => Promise<RecruiterReportItem[]>;
   getRecruiterInterviewReview: (
     applicationId: string,
@@ -898,6 +934,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) as Promise<RecruiterCandidateAnalysisResponse>;
   };
 
+  const getRecruiterCandidateCvDownloadUrl = async (applicationId: string) => {
+    return requestApi(
+      `recruiter/applications/${applicationId}/cv-download`,
+    ) as Promise<{ downloadUrl: string }>;
+  };
+
   const getRecruiterDashboardStats = async () => {
     return requestApi('recruiter/dashboard/stats') as Promise<RecruiterDashboardStats>;
   };
@@ -932,6 +974,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const profile = await requestCandidate("cv");
     setCandidateProfile(profile);
     return profile as CandidateProfileResponse;
+  };
+
+  const getCandidateCvAnalysisStatus = async () => {
+    return requestCandidate("cv/analysis-status") as Promise<{
+      cvId: string | null;
+      status: "processing" | "completed" | "failed" | null;
+    }>;
+  };
+
+  const getCandidateResumeAnalysis = async () => {
+    return requestApi("candidate/resume/analysis") as Promise<CandidateResumeAnalysisResponse>;
   };
 
   const updateCandidateProfile = async (data: Record<string, unknown>) => {
@@ -1009,6 +1062,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         registerRecruiter,
         refreshCandidateProfile,
         refreshCandidateCv,
+        getCandidateCvAnalysisStatus,
+        getCandidateResumeAnalysis,
         updateCandidateProfile,
         updateCandidateCv,
         uploadCandidateCv,
@@ -1034,6 +1089,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getCandidateInterviewAnalysis,
         runCandidateInterviewAnalysis,
         getRecruiterApplicationAnalysis,
+        getRecruiterCandidateCvDownloadUrl,
         getRecruiterDashboardStats,
         listRecruiterReports,
         getRecruiterInterviewReview,

@@ -18,11 +18,24 @@ function formatMs(ms: number) {
   return `${m}:${s}`;
 }
 
+function formatInterviewDate(date: string | null) {
+  if (!date) return 'Fecha no disponible';
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime())
+    ? 'Fecha no disponible'
+    : new Intl.DateTimeFormat('es-CO', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(parsed);
+}
+
 export default function CandidatoVideoPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const candidateId = params.id;
   const applicationId = searchParams.get('applicationId');
+  const origin = searchParams.get('from') === 'reportes' ? 'reportes' : 'talentos';
+  const interviewIdParam = searchParams.get('interviewId');
   const interviewTypeParam = searchParams.get('interviewType');
   const interviewType: 'technical' | 'behavioral' =
     interviewTypeParam === 'technical' ? 'technical' : 'behavioral';
@@ -72,8 +85,16 @@ export default function CandidatoVideoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicationId, interviewType]);
 
-  const markers = review?.interview?.markers ?? [];
-  const answers = review?.interview?.answers ?? [];
+  const interviews = review?.interviews?.length
+    ? review.interviews
+    : review?.interview
+      ? [review.interview]
+      : [];
+  const interview = interviewIdParam
+    ? interviews.find((item) => item.id === interviewIdParam) ?? review?.interview ?? null
+    : review?.interview ?? interviews[0] ?? null;
+  const markers = interview?.markers ?? [];
+  const answers = interview?.answers ?? [];
 
   const selectedAnswer = useMemo(
     () => answers.find((item) => item.id === activeAnswerId) ?? answers[0] ?? null,
@@ -81,8 +102,9 @@ export default function CandidatoVideoPage() {
   );
 
   useEffect(() => {
+    if (interviewType !== 'behavioral') return;
     const video = videoRef.current;
-    if (!video || !review?.interview?.videoDownloadUrl) return;
+    if (!video || !interview?.videoDownloadUrl) return;
 
     const seekSeconds = tParam
       ? Number(tParam)
@@ -101,11 +123,13 @@ export default function CandidatoVideoPage() {
     video.addEventListener('loadedmetadata', onLoaded);
     if (video.readyState >= 1) onLoaded();
     return () => video.removeEventListener('loadedmetadata', onLoaded);
-  }, [review, markerId, markers, tParam]);
+  }, [interviewType, interview, markerId, markers, tParam]);
 
   const profileHref = applicationId
-    ? `/admin/candidatos/${candidateId}?applicationId=${encodeURIComponent(applicationId)}`
+    ? `/admin/candidatos/${candidateId}?applicationId=${encodeURIComponent(applicationId)}&from=${origin}`
     : '/admin/reportes';
+  const interviewAttemptHref = (id: string) =>
+    `/admin/candidatos/${candidateId}/video?applicationId=${encodeURIComponent(applicationId ?? '')}&from=${origin}&interviewType=${interviewType}&interviewId=${encodeURIComponent(id)}`;
 
   if (loading) {
     return (
@@ -114,7 +138,9 @@ export default function CandidatoVideoPage() {
           <div className="spinner" />
           <h3 className="text-lg font-bold">Cargando entrevista…</h3>
           <p className="text-sm text-[var(--ink-soft)] mt-2">
-            Se recupera video/respuestas ya guardados (sin Gemini).
+            {interviewType === 'technical'
+              ? 'Se recuperan las respuestas técnicas ya guardadas.'
+              : 'Se recupera el video y las respuestas ya guardadas (sin Gemini).'}
           </p>
         </div>
       </div>
@@ -134,8 +160,6 @@ export default function CandidatoVideoPage() {
       </div>
     );
   }
-
-  const interview = review.interview;
 
   return (
     <div>
@@ -157,13 +181,46 @@ export default function CandidatoVideoPage() {
         </Link>
       </div>
 
+      {interviews.length > 1 && (
+        <section className="card card-pad mb-4.5" aria-label="Historial de intentos de entrevista">
+          <h2 className="mb-3 text-sm font-bold">Historial de intentos de esta postulación</h2>
+          <div className="flex flex-wrap gap-2">
+            {interviews.map((attempt, index) => (
+              <Link
+                key={attempt.id}
+                href={interviewAttemptHref(attempt.id)}
+                className={`rounded-xl border px-3 py-2 text-sm ${
+                  interview?.id === attempt.id
+                    ? 'border-[var(--navy)] bg-[var(--navy-tint)] text-[var(--navy)]'
+                    : 'border-[var(--line)] text-[var(--ink-soft)]'
+                }`}
+              >
+                <span className="font-semibold">Intento {interviews.length - index}</span>
+                {index === 0 && <span className="ml-2 text-xs font-semibold">Más reciente</span>}
+                <span className="mt-1 block text-xs">
+                  {formatInterviewDate(attempt.startedAt ?? attempt.createdAt)}
+                  {' · '}{attempt.status === 'completed' ? 'Completada' : attempt.status === 'in_progress' ? 'En curso' : attempt.status === 'canceled' ? 'Cancelada' : 'Programada'}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {!interview ? (
         <div className="card card-pad text-sm text-[var(--ink-soft)]">
           Esta postulación aún no tiene una entrevista {interviewType} registrada.
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4.5 items-start">
-          <div>
+        <div
+          className={
+            interviewType === 'technical'
+              ? 'grid grid-cols-1 gap-4.5'
+              : 'grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4.5 items-start'
+          }
+        >
+          {interviewType === 'behavioral' && (
+            <div>
             {interview.videoDownloadUrl ? (
               <div className="card card-pad overflow-hidden p-0">
                 <video
@@ -180,9 +237,7 @@ export default function CandidatoVideoPage() {
                   <PlayIcon size={26} />
                 </div>
                 <p className="absolute bottom-4 left-4 right-4 text-white text-sm">
-                  {interviewType === 'behavioral'
-                    ? 'No hay video firmado disponible para esta entrevista.'
-                    : 'La entrevista técnica no incluye video; revisa las respuestas a la derecha.'}
+                  No hay video firmado disponible para esta entrevista.
                 </p>
               </div>
             )}
@@ -219,7 +274,8 @@ export default function CandidatoVideoPage() {
                 </div>
               </div>
             ) : null}
-          </div>
+            </div>
+          )}
 
           <div className="card card-pad">
             <h3 className="text-sm font-bold mb-2.5">

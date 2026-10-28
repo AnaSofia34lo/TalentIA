@@ -93,7 +93,7 @@ export default function AdminDashboardPage() {
       {/* Page Header */}
       <div className="page-head">
         <div>
-          <h1 className="page-title">Buenos días, {recruiterFirstName}</h1>
+          <h1 className="page-title">Saludos, {recruiterFirstName}</h1>
           <p className="page-sub">
             Métricas reales de selección y estado del talento en {orgName}.
           </p>
@@ -116,11 +116,11 @@ export default function AdminDashboardPage() {
       {/* Hero Banner */}
       <div
         className="card relative overflow-hidden text-white p-8 md:p-9 mb-6 border-0"
-        style={{ background: "var(--grad-brand)" }}
+        style={{ background: "var(--grad-dashboard)" }}
       >
         <div
           className="absolute w-[260px] h-[260px] rounded-full -top-[100px] -right-[60px] pointer-events-none"
-          style={{ background: "rgba(255, 255, 255, 0.08)" }}
+          style={{ background: "rgba(255, 255, 255, 0.14)" }}
         />
 
         <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
@@ -135,10 +135,10 @@ export default function AdminDashboardPage() {
               <span className="badge-dot" />
               TalentIA para {orgName}
             </span>
-            <h2 className="text-white text-xl md:text-2xl font-bold leading-snug mb-2.5">
+            <h2 className="text-xl md:text-2xl font-bold leading-snug mb-2.5" style={{ color: "#fff" }}>
               Selección de talento impulsada por IA con evidencia real
             </h2>
-            <p className="text-white/80 text-sm leading-relaxed">
+            <p className="text-sm leading-relaxed" style={{ color: "rgba(255, 255, 255, 0.9)" }}>
               TalentIA analiza hojas de vida, conduce entrevistas técnicas y
               conductuales, y calcula el porcentaje de afinidad para cada vacante
               activa. Las métricas que ves aquí reflejan el estado real y vivo de
@@ -148,16 +148,16 @@ export default function AdminDashboardPage() {
 
           <div className="flex gap-3 flex-wrap">
             <div className="bg-white/10 border border-white/20 rounded-2xl p-3.5 px-5 min-w-[120px]">
-              <div className="text-white text-2xl font-extrabold font-['Poppins']">
+              <div className="kpi-value text-white">
                 {loading ? "..." : activeVacancies}
               </div>
-              <div className="text-white/75 text-xs">Vacantes activas</div>
+              <div className="text-white/85 text-xs">Vacantes activas</div>
             </div>
             <div className="bg-white/10 border border-white/20 rounded-2xl p-3.5 px-5 min-w-[120px]">
-              <div className="text-white text-2xl font-extrabold font-['Poppins']">
+              <div className="kpi-value text-white">
                 {loading ? "..." : totalApplicants}
               </div>
-              <div className="text-white/75 text-xs">Postulantes registrados</div>
+              <div className="text-white/85 text-xs">Postulantes registrados</div>
             </div>
           </div>
         </div>
@@ -270,7 +270,7 @@ export default function AdminDashboardPage() {
                         height: `${vac.applicantCount > 0 ? heightPct : 6}%`,
                         background:
                           vac.applicantCount > 0
-                            ? "var(--grad-brand)"
+                            ? "var(--grad-dashboard)"
                             : "var(--navy-tint)",
                       }}
                     />
