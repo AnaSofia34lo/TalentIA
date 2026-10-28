@@ -72,9 +72,19 @@ Gemini analiza el CV para extraer experiencia, certificaciones y skills técnica
 - [Backend](backend/README.md): API, autenticación, persistencia, IA, seguridad y Swagger.
 - [Frontend](frontend/README.md): pantallas, navegación, flujos de candidato y reclutador.
 
+## Frontend desplegado
+
+La aplicación web TalentIA está disponible en:
+
+https://talent-ia-five.vercel.app/
+
 ## Backend desplegado
 
 Swagger está disponible en [talentia-api.onrender.com/api/docs](https://talentia-api.onrender.com/api/docs).
+
+La url directa del backend:
+
+https://talentia-api.onrender.com
 
 ## Ejecución rápida
 

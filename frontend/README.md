@@ -2,6 +2,12 @@
 
 Aplicación Next.js para los flujos de candidatos y reclutadores. La sesión se administra con Supabase Authentication y las operaciones de negocio se realizan contra la API NestJS mediante JWT.
 
+## Frontend desplegado
+
+La aplicación web TalentIA está disponible en:
+
+https://talent-ia-five.vercel.app/
+
 ## Stack y configuración
 
 - Next.js 16, React 19 y TypeScript.

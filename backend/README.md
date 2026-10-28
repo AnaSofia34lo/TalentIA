@@ -2,6 +2,14 @@
 
 API NestJS que implementa autenticación, perfiles, CV, vacantes, postulaciones, entrevistas, pruebas técnicas y evaluación con IA. El código está organizado en capas de dominio, aplicación e infraestructura para mantener los casos de uso testeables.
 
+## Backend desplegado
+
+Swagger está disponible en [talentia-api.onrender.com/api/docs](https://talentia-api.onrender.com/api/docs).
+
+La url directa del backend:
+
+https://talentia-api.onrender.com
+
 ## Stack y configuración
 
 - NestJS, TypeScript y `class-validator`.
