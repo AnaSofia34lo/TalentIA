@@ -182,7 +182,7 @@ export default function AdminBancoPage() {
                     </div>
                     <EstadoBadge estado={statusLabel(candidate.status)} />
                     <Link
-                      href={`/admin/candidatos/${candidate.candidateId}?applicationId=${encodeURIComponent(candidate.applicationId)}&vacancyId=${encodeURIComponent(selectedVacancyId)}`}
+                      href={`/admin/candidatos/${candidate.candidateId}?applicationId=${encodeURIComponent(candidate.applicationId)}&vacancyId=${encodeURIComponent(selectedVacancyId)}&from=talentos`}
                       className="btn btn-outline btn-sm btn-block mt-3"
                     >
                       Ver perfil
@@ -245,7 +245,7 @@ export default function AdminBancoPage() {
                         </td>
                         <td>
                           <Link
-                            href={`/admin/candidatos/${candidate.candidateId}?applicationId=${encodeURIComponent(candidate.applicationId)}&vacancyId=${encodeURIComponent(selectedVacancyId)}`}
+                            href={`/admin/candidatos/${candidate.candidateId}?applicationId=${encodeURIComponent(candidate.applicationId)}&vacancyId=${encodeURIComponent(selectedVacancyId)}&from=talentos`}
                             className="btn btn-outline btn-sm"
                           >
                             Ver perfil

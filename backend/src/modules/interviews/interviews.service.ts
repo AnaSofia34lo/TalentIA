@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -53,15 +54,6 @@ export class InterviewsService {
             organization: { select: { name: true } },
           },
         },
-        interviews: {
-          where: { type, status: { in: ['scheduled', 'in_progress'] } },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          include: {
-            questions: { orderBy: { createdAt: 'asc' } },
-            answers: true,
-          },
-        },
       },
     });
 
@@ -76,42 +68,75 @@ export class InterviewsService {
       );
     }
 
-    const existing = application.interviews[0];
-    if (existing) {
-      return this.serialize(existing, application.vacancy);
-    }
+    return this.prisma.$transaction(async (tx) => {
+      // Bloquea la postulaci?n para que dos solicitudes simult?neas no creen
+      // dos entrevistas del mismo tipo.
+      await tx.$queryRaw`SELECT id FROM candidate_applications WHERE id = ${application.id} FOR UPDATE`;
 
-    const identityDocument = await this.prisma.storageAsset.findFirst({
-      where: { userId: candidateId, kind: 'identity_document' },
-      select: { id: true },
-    });
-    if (!identityDocument) {
-      throw new BadRequestException(
-        'Debes subir tu documento de identidad en tu perfil antes de iniciar la entrevista.',
-      );
-    }
-
-    const interview = await this.prisma.interview.create({
-      data: {
-        applicationId: application.id,
-        vacancyId: application.vacancyId,
-        candidateId,
-        type,
-        status: 'in_progress',
-        startedAt: new Date(),
-        remainingSeconds: durationSeconds,
-        questions: {
-          create: application.vacancy.interviewQuestions.map((question) => ({
-            category: question.category,
-            prompt: question.prompt,
-            expectedAnswer: null,
-          })),
+      const existingInterviews = await tx.interview.findMany({
+        where: { applicationId: application.id, type },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          questions: { orderBy: { createdAt: 'asc' } },
+          answers: true,
         },
-      },
-      include: { questions: { orderBy: { createdAt: 'asc' } }, answers: true },
-    });
+      });
+      const completed = existingInterviews.find(
+        (interview) => interview.status === 'completed',
+      );
+      if (completed) {
+        throw new ConflictException(
+          'Esta entrevista ya fue completada. Solo se permite un intento por postulaci?n.',
+        );
+      }
 
-    return this.serialize(interview, application.vacancy);
+      const resumable = existingInterviews.find((interview) =>
+        ['scheduled', 'in_progress'].includes(interview.status),
+      );
+      if (resumable) {
+        return this.serialize(resumable, application.vacancy);
+      }
+      if (existingInterviews.length > 0) {
+        throw new ConflictException(
+          'Esta entrevista ya fue iniciada y no admite un nuevo intento.',
+        );
+      }
+
+      const identityDocument = await tx.storageAsset.findFirst({
+        where: { userId: candidateId, kind: 'identity_document' },
+        select: { id: true },
+      });
+      if (!identityDocument) {
+        throw new BadRequestException(
+          'Debes subir tu documento de identidad en tu perfil antes de iniciar la entrevista.',
+        );
+      }
+
+      const interview = await tx.interview.create({
+        data: {
+          applicationId: application.id,
+          vacancyId: application.vacancyId,
+          candidateId,
+          type,
+          status: 'in_progress',
+          startedAt: new Date(),
+          remainingSeconds: durationSeconds,
+          questions: {
+            create: application.vacancy.interviewQuestions.map((question) => ({
+              category: question.category,
+              prompt: question.prompt,
+              expectedAnswer: null,
+            })),
+          },
+        },
+        include: {
+          questions: { orderBy: { createdAt: 'asc' } },
+          answers: true,
+        },
+      });
+
+      return this.serialize(interview, application.vacancy);
+    });
   }
 
   async submitAnswer(

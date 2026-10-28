@@ -47,13 +47,28 @@ export class AnalyzeCandidateResumeUseCase {
       return;
     }
 
+    await this.resumeRepository.setAnalysisStatus(storageAssetId, 'processing');
+
+    // El nuevo CV ya es la fuente vigente: evita conservar experiencia y
+    // certificaciones extraídas del documento anterior si el nuevo no las trae.
+    // Las habilidades técnicas se conservan hasta que el nuevo análisis tenga
+    // habilidades para reemplazarlas.
+    await this.resumeRepository.replaceAnalysis(userId, {
+      workExperiences: [],
+      certifications: [],
+      technicalSkills: [],
+    });
+
     const buffer = await this.downloadCv(asset.fileUrl);
     const text = await this.textExtractor.extract(
       buffer,
       asset.mimeType,
       asset.fileName,
     );
-    const extracted = await this.resumeParser.parse(text);
+    const extracted = await this.resumeParser.parse(text, {
+      mimeType: asset.mimeType || 'application/pdf',
+      base64: buffer.toString('base64'),
+    });
 
     const workExperiences = extracted.workExperience
       .map((item) => WorkExperience.fromExtracted(userId, item))
@@ -74,6 +89,7 @@ export class AnalyzeCandidateResumeUseCase {
     });
 
     await this.autocompleteProfile(userId, workExperiences);
+    await this.resumeRepository.setAnalysisStatus(storageAssetId, 'completed');
 
     this.eventEmitter.emit('candidate.resume.analyzed', {
       userId,
@@ -88,6 +104,13 @@ export class AnalyzeCandidateResumeUseCase {
     try {
       await this.execute(payload);
     } catch (error) {
+      await this.resumeRepository
+        .setAnalysisStatus(payload.storageAssetId, 'failed')
+        .catch((statusError: unknown) => {
+          this.logger.error(
+            `No se pudo guardar el estado fallido del CV ${payload.storageAssetId}: ${String(statusError)}`,
+          );
+        });
       if (
         error instanceof UnreadableResumeError ||
         error instanceof InvalidResumeParseError

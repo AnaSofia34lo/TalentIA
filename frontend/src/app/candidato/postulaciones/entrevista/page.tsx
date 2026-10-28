@@ -62,6 +62,15 @@ function EntrevistaActivaPageContent() {
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [loadError, setLoadError] = useState('');
 
+  useEffect(() => {
+    if (!vacancyId || !candidateProfile?.id) return;
+    const consentKey = `technical-interview-consent:${candidateProfile.id}:${vacancyId}`;
+    if (sessionStorage.getItem(consentKey) === 'accepted') {
+      sessionStorage.removeItem(consentKey);
+      setDataTreatmentAccepted(true);
+    }
+  }, [candidateProfile?.id, vacancyId]);
+
   React.useEffect(() => {
     if (!vacancyId || !dataTreatmentAccepted || !candidateProfile?.identityDocument) return;
 

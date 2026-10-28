@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
+import { TalentIAMark } from './TalentIAMark';
 
 interface TalentIALogoProps {
   variant?: 'full' | 'mark' | 'badge';
@@ -29,14 +29,7 @@ export function TalentIALogo({
         className={`relative inline-flex items-center justify-center flex-shrink-0 overflow-hidden rounded-[10px] shadow-sm select-none ${className}`}
         style={{ width: `${sizeMap.img}px`, height: `${sizeMap.img}px` }}
       >
-        <Image
-          src="/brand-logo.png"
-          alt="TalentIA"
-          width={sizeMap.img}
-          height={sizeMap.img}
-          className="w-full h-full object-cover"
-          priority
-        />
+        <TalentIAMark className="w-full h-full" />
       </div>
     );
   }
@@ -47,14 +40,7 @@ export function TalentIALogo({
         className="relative inline-flex items-center justify-center flex-shrink-0 overflow-hidden rounded-[10px] shadow-sm"
         style={{ width: `${sizeMap.img}px`, height: `${sizeMap.img}px` }}
       >
-        <Image
-          src="/brand-logo.png"
-          alt="TalentIA Logo"
-          width={sizeMap.img}
-          height={sizeMap.img}
-          className="w-full h-full object-cover"
-          priority
-        />
+        <TalentIAMark className="w-full h-full" />
       </div>
 
       <div className="flex flex-col">

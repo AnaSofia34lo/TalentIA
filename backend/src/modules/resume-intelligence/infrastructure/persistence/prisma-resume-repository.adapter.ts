@@ -24,6 +24,16 @@ export class PrismaResumeRepositoryAdapter implements ResumeRepositoryPort {
     };
   }
 
+  async setAnalysisStatus(
+    storageAssetId: string,
+    status: 'processing' | 'completed' | 'failed',
+  ): Promise<void> {
+    await this.prisma.storageAsset.updateMany({
+      where: { id: storageAssetId, kind: 'cv' },
+      data: { resumeAnalysisStatus: status },
+    });
+  }
+
   async replaceAnalysis(
     userId: string,
     data: {
@@ -35,7 +45,9 @@ export class PrismaResumeRepositoryAdapter implements ResumeRepositoryPort {
     await this.prisma.$transaction(async (tx) => {
       await tx.workExperience.deleteMany({ where: { userId } });
       await tx.certification.deleteMany({ where: { userId } });
-      await tx.candidateTechnicalSkill.deleteMany({ where: { userId } });
+      if (data.technicalSkills.length > 0) {
+        await tx.candidateTechnicalSkill.deleteMany({ where: { userId } });
+      }
 
       if (data.workExperiences.length > 0) {
         await tx.workExperience.createMany({
